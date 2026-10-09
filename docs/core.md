@@ -268,3 +268,210 @@ message shows as an idle agent, and you can reply again.
 
 Output plugins that only mirror state, such as an issue comment or a notification, listen to
 events. They never block a task, and the core sends them no command.
+
+## Decisions made while building the core
+
+The human did not review these as they were made. Each one is a call the docs above left
+open, or a detail they didn't pin down. The core was built against them.
+
+### Part 1: the types
+
+The types live in `src/core/types.ts`. This part says what they hold and why.
+
+**Names for things**
+
+- **A request number names what it asked for.** A workspace is named by the number of the
+  request that created it. A session is named by the number of the request that started it.
+  So an agent's input names its session as that number, and a report that a session ended
+  does too. The harness's own session ID is the plugin's business. It comes back with the
+  start reply, and the task keeps it for finding the transcript.
+- **A stop has no request number of its own.** It names the session it stops, and its reply
+  names that session too. A session is stopped once, so its number is enough. This keeps a
+  cleanup stop, sent for a session that started late, from changing the task's counter.
+- **The task's branch name is worked out by the core**, from the task ID and title, such as
+  `skel/142-empty-export`. The same task always gets the same name.
+- **The core never makes up a task ID.** `add` and a task source's arrival carry the ID.
+  Approved proposals become tasks through the task source: the core sends a command to add
+  them, and each comes back as a normal arrival with its own ID. This keeps every event on
+  the task that caused it.
+
+**The task**
+
+- A task holds its ID, source, title, description, when it arrived, its request counter and
+  its sessions with their usage. Then one state for its phase.
+- The phase states are triage, build, review and ended. Triage, build and review also hold
+  the open question, the hold, the hold last lifted, and whether you are attached.
+- **Every step that can't exist without some data carries that data.** A running step holds
+  its session. A merge holds the handed-over work. A tester's step holds its copy. So a
+  tester without a copy can't be written down.
+- **The queued step is the resting step.** A task is queued when no agent runs and no request
+  is in flight. What it does next follows from what it holds. In build, a queued task with
+  handed-over work merges main next. Without it, a builder starts next.
+- **Build and review share their plan:** intent, rigor, the approval flag, the brief, the
+  spec and the loop count. Review also holds the handed-over work and the reviewed commit.
+- **`try` ends in build.** Its approval and delivery steps carry the handed-over work and the
+  reviewed commit, since build has no other place for them.
+- **An ended task can still owe one cleanup.** When a task ends while its agent is stopping,
+  it keeps that session and the workspace the agent ran in. Once the stop is confirmed and
+  saved, the workspace is removed. If the save failed, the workspace is kept for good.
+
+**Holds**
+
+- A hold is one of: paused, crashed (exit code and last line), gave up (the reason), loop
+  cap (the findings), a failed workspace, session, merge or delivery (the error), or work
+  that couldn't be saved.
+- **A new hold replaces an old one.** A paused task whose stop then fails to save is held as
+  unsaved, so it shows as waiting on you.
+- **A held task sends no new request.** No workspace, session, merge or delivery starts while
+  it is held. Stops and removals still go out, since they only clean up.
+- **The hold last lifted is kept until the next session starts.** The scheduler reads it to
+  put resumed tasks first, and the new session is told why it is back.
+
+**Inputs**
+
+Every input carries its task ID, its moment and its sender. The sender is you, an agent, a
+plugin or the daemon.
+
+| Sender | Inputs |
+|---|---|
+| you | add, set, reply, approve, deny, approve proposals, deny proposals, attach, detach, pause, resume, start, retry, kill |
+| agent | proceed, split, decline (planner); progress, done (builder); pass, changes (tester); ask and give up (any role). Each names its session and role. |
+| plugin | task arrived, outside change, tracker reply, and the replies: workspace created or failed, session started, failed, ended or stopped, main merged, conflict or failed, output delivered or failed |
+| daemon | start, deliver answer, usage |
+
+- **A tracker reply carries the account it came from.** The core accepts it as your answer
+  only if config lists that account as yours.
+- **The daemon adds facts from git** before the core sees them: the commit and changed files
+  on `done` and on a detach that hands over, and the text of every file an agent names.
+- **A task source can't set intent, rigor or approval.** Only `add` from you can. Setting
+  approval from a tracker label waits for the GitHub plugin.
+- **The planner's spec arrives with its path**, chosen by the daemon, and its text.
+
+**Events**
+
+Every event carries its type, a version (1 for all of them now), its task and its moment.
+The events are the spec's list, plus these, since a state change needs an event and the
+spec's list has none for them:
+
+| Event | Why it exists |
+|---|---|
+| `workspace.requested`, `session.requested`, `main.requested`, `output.requested` | A step that waits on a reply holds its request number. These record the number and the step. |
+| `session.stopping` | The agent is let go and its stop is in flight. The task keeps its slot until the stop is confirmed. |
+| `approval.requested` | The task now waits for your sign-off. |
+| `answer.delivered` | Your kept answer was typed into the session, so the question is closed. |
+| `progress.reported` | A builder's progress note, kept in the log for you to read. It changes no state. |
+| `usage.reported` | A session's usage totals grew. |
+
+- **`phase.started` is only for build and review.** `task.received` puts a task in triage.
+  When triage is skipped, `phase.started` for build follows at once.
+- **`task.resumed` covers both resume and retry**, with which one it was.
+- **A crash is recorded as a hold, not as `session.ended`.** A crashed session's pane stays
+  open, so it still needs a stop, and its uncommitted work still needs saving. The task is
+  held as crashed, and the stop goes out. The stop's reply then records `session.ended` as
+  stopped. So `session.ended` never carries the reasons `crashed` or `reported`. Every
+  report is followed by a stop, so `reported` would never be the reason either.
+
+**Commands**
+
+The commands are the ones in Commands above, plus one: **add tasks**, which hands approved
+proposals to the task source. It has no reply. Stop session also carries whether to save,
+and for the planner after proceed, the spec to write and commit with the save.
+
+- **Starting a session sets its edit permission from the role and intent.** Only a builder
+  on a `ship` or `try` task can edit.
+- **Delivery says whether the output is mergeable.** `try` is never mergeable.
+- **A workspace removed at the end keeps its branch**, so you can still find the work. Only a
+  split or a decline deletes the branch too, as the spec says. A late workspace is removed
+  without touching any branch.
+
+**Config the core reads**
+
+`max_running`, the `critical` paths, and the tracker accounts that are yours. The loop cap is
+fixed at 3, as the spec says. The `critical` paths use glob patterns, matched with Bun's
+`Glob`.
+
+**What decide returns**
+
+`decide` returns either accepted, with the events and commands, or refused, with the reason
+in plain words. `evolve` returns the new task, or the reason the event doesn't fit. Neither
+throws.
+
+**Zod comes with the boundary.** Every outside input is checked with Zod where it arrives:
+the CLI, plugins and the saved log. None of those exist in this milestone, so the core's
+types are plain TypeScript for now.
+
+**How every input is judged, before its phase**
+
+1. A new task (`add`, or a task source's arrival): refused if the task already exists.
+   Otherwise the task is received.
+2. Any other input for a task that doesn't exist is refused.
+3. An outside change is always refused. Tasks move only through Skelcrew.
+4. A reply the task no longer waits on is late. It is accepted with only the commands that
+   clean up after it, and records no event:
+   - a workspace created late is removed;
+   - a session started late is stopped, without saving;
+   - every other late reply needs no cleanup.
+
+   A reply that repeats what the task already holds is accepted and does nothing. For
+   example, a second "started" for the session that is running doesn't stop it.
+5. An ended task accepts only the stop it still waits on, late replies, usage, and your
+   decisions on its proposals. Everything else is refused, since nothing leaves an ending.
+6. An agent's input is heard only from the session the task's step holds as running, and
+   only for the role that fits the phase. Everything else is refused.
+7. Then the input is judged against the phase and step.
+
+**Stories**
+
+Each story becomes a snapshot test once the core can run it.
+
+1. **Quick fix.** `add --ship --light` skips triage. The scheduler starts it: workspace,
+   builder, `done`, merge main, tester, `pass`, delivery. The task ends as done.
+2. **Full feature with sign-off.** The planner proceeds with `ship`, `full`, approval and a
+   spec. Review asks for changes once. The second review passes. The task waits for you, you
+   approve, and it is delivered.
+3. **A crash and a retry.** The builder's session crashes. The task is held with the exit
+   code, and the stop saves its work. You retry. The task waits for a slot, and a fresh
+   builder starts with why it is back.
+4. **A question.** The builder asks and the slot frees. You reply. The scheduler delivers the
+   answer once a slot is free, and the builder carries on.
+5. **A split.** The planner splits the task. It ends as split, and its workspace and branch
+   are removed once the planner's stop is confirmed. You approve one proposal, and the task
+   source is asked to add it.
+6. **A prototype.** A `try` task skips review and is delivered as not mergeable.
+7. **A conflict.** Merging main conflicts. The loop count goes up, and a fresh builder gets the
+   merge back.
+8. **The loop cap.** Review asks for changes three times. The task is held with the findings.
+   You kill it, and it ends as failed.
+9. **A pause during a start.** You pause while the builder is starting. The start reply
+   arrives, the new session is stopped at once, and the task waits held.
+
+**How each invariant is checked**
+
+The property tests drive the core with random inputs, mostly ones the current state accepts.
+Replies are built from the commands actually sent, old ones included. A model of the outside
+world records which workspaces and sessions really exist. After every step:
+
+| Rule | Check |
+|---|---|
+| 1 | No accepted input from an agent, plugin or the daemon records one of your events: set, approval, answer (but a tracker reply from your account), proposals, start, pause, resume, kill or failed. |
+| 2 | Every accepted agent input came from the running session of a phase its role fits. |
+| 3 | An add tasks command goes out only with `proposals.approved`. Nothing but `add` and an arrival records `task.received`. |
+| 4 | Every outside change is refused. |
+| 5 | A refused input returns no events and no commands. A late reply records no events, and sends only a removal or a stop. |
+| 6 | The commit delivered is the reviewed commit. For `ship` and `answer`, it is also the commit the tester's copy was made at. |
+| 7 | A `ship` delivery follows a `review.passed` on the same commit. |
+| 8 | A delivery of a task with the approval flag, or with a critical file changed, follows an `approval.given` after its last pass, or after its last `build.done` for `try`. |
+| 9 | No delivery of a `try` is mergeable. No session on an `answer` task starts with edit permission. |
+| 10 | The slots in use never pass `max_running`, except through your start or attach. A start session command goes out only when the task has no live session. |
+| 11 | A held task has no running session, and sends no request. |
+| 12 | Every failure reply and every crash leaves the task held or ended. |
+| 13 | A second ask is refused while a question is open. |
+| 14 | Every workspace and session that exists in the world model is held by its task, or has had a removal or stop sent. Everything a task holds exists in the world model. |
+| 15 | No removal is sent for a workspace while a session in it is still live, and none after a failed save. A stop of a tester never saves. |
+| 18 | An ended task records only cleanup, usage and proposal events. |
+| 19 | A crash leaves the task held with its exit code and last line. |
+| 20 | An open question's session is the running session. |
+| 21 | No session's usage goes down. A lower report is refused. |
+| 22 | Folding the task's events through `evolve` from nothing gives the same task. |
+
+Rules 16 and 17 are about the loop and store, which come in the next milestone.
