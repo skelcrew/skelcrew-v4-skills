@@ -8,6 +8,7 @@ import { builderCall, merged } from "./build";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
 import { decideProposals } from "./proposals";
+import { testerCall } from "./review";
 import { stopped } from "./stop";
 import {
   heldPaths,
@@ -121,8 +122,8 @@ function fromAgent(draft: Draft, state: ActiveState, input: AgentInput): string 
       return triageCall(draft, state, input);
     case "build":
       return builderCall(draft, state, input);
-    default:
-      return "not built yet";
+    case "review":
+      return testerCall(draft, state, input);
   }
 }
 

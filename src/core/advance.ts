@@ -3,7 +3,15 @@
 
 import type { Draft } from "./draft";
 import { branchName, plainBrief } from "./task";
-import type { BuildState, Handover, Role, Workspace, WorkspaceRequest } from "./types";
+import type {
+  BuildState,
+  Copy,
+  Handover,
+  ReviewState,
+  Role,
+  Workspace,
+  WorkspaceRequest,
+} from "./types";
 
 export function advance(draft: Draft): void {
   const state = draft.task.state;
@@ -25,9 +33,35 @@ export function advance(draft: Draft): void {
         requestBuilder(draft, state, state.workspace);
       }
       return;
-    default:
+    case "review": {
+      const copy = state.step.kind === "queued" ? state.step.copy : undefined;
+      if (copy === undefined) {
+        requestWorkspace(draft, { kind: "copy", commit: state.reviewed.commit });
+      } else {
+        requestTester(draft, state, copy);
+      }
       return;
+    }
   }
+}
+
+function requestTester(draft: Draft, state: ReviewState, copy: Copy): void {
+  const request = draft.nextRequest();
+  recordSession(draft, request, "tester", false);
+  draft.send({
+    kind: "start_session",
+    task: draft.task.id,
+    request,
+    role: "tester",
+    path: copy.path,
+    edits: false,
+    intent: state.intent,
+    rigor: state.rigor,
+    brief: state.brief,
+    ...(state.spec === undefined ? {} : { spec: state.spec }),
+    ...(state.lifted === undefined ? {} : { back: state.lifted }),
+    review: { commit: state.reviewed.commit, work: state.handover.work },
+  });
 }
 
 function requestBuilder(draft: Draft, state: BuildState, workspace: Workspace): void {

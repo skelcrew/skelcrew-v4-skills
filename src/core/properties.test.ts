@@ -308,6 +308,8 @@ test("random runs reach every event built so far", () => {
     "main.merged",
     "main.conflict",
     "main.failed",
+    "review.passed",
+    "review.changes_requested",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 });

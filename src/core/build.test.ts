@@ -135,7 +135,11 @@ describe("after the builder's stop", () => {
 
   test("an answer goes to review on the handed-over commit", () => {
     const run = more(building("answer"), [done(report, ["docs/notes.md"]), stopped()]);
-    expect(types(run.events).slice(-2)).toEqual(["session.ended", "phase.started"]);
+    expect(types(run.events).slice(-3)).toEqual([
+      "session.ended",
+      "phase.started",
+      "workspace.requested",
+    ]);
     const state = taskOf(run).state;
     expect(state.phase === "review" && state.reviewed).toEqual({
       commit: "c1",
@@ -155,7 +159,11 @@ describe("after the builder's stop", () => {
         files: ["src/export.ts", "README.md"],
       }),
     ]);
-    expect(types(run.events).slice(-2)).toEqual(["main.merged", "phase.started"]);
+    expect(types(run.events).slice(-3)).toEqual([
+      "main.merged",
+      "phase.started",
+      "workspace.requested",
+    ]);
     const state = taskOf(run).state;
     expect(state.phase).toBe("review");
     expect(state.phase === "review" && state.reviewed).toEqual({

@@ -2,6 +2,7 @@
 
 import { advance } from "./advance";
 import type { Draft } from "./draft";
+import { afterTester } from "./review";
 import type { EndReason, PluginInput, Spec } from "./types";
 
 type Stopped = Extract<PluginInput, { kind: "session_stopped" }>;
@@ -56,6 +57,10 @@ export function stopped(draft: Draft, input: Stopped): void {
       loops: 0,
       ...(workspace === undefined ? {} : { workspace }),
     });
+  }
+  if (before.phase === "review" && before.step.kind === "stopping") {
+    afterTester(draft, before.step.verdict);
+    return;
   }
   advance(draft);
 }

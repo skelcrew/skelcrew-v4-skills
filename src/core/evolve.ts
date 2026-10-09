@@ -17,6 +17,7 @@ import type {
   SaveResult,
   Stopping,
   Task,
+  Verdict,
   Workspace,
 } from "./types";
 
@@ -222,6 +223,35 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           });
       }
       return misfit(event, "unknown phase");
+    }
+
+    case "review.passed":
+    case "review.changes_requested": {
+      if (state.phase !== "review" || state.step.kind !== "stopping") {
+        return misfit(event, "the tester isn't being stopped");
+      }
+      if (state.step.session !== event.session) return misfit(event, "it is another session's");
+      const verdict: Verdict =
+        event.type === "review.passed"
+          ? { kind: "pass", evidence: event.evidence }
+          : { kind: "changes", findings: event.findings };
+      return ok({ ...task, state: { ...state, step: { ...state.step, verdict } } });
+    }
+
+    case "workspace.removed": {
+      if (state.workspace?.request === event.request) {
+        if (state.phase === "review") return misfit(event, "review needs its workspace");
+        const { workspace: _, ...rest } = state;
+        return ok({ ...task, state: rest });
+      }
+      if (
+        state.phase === "review" &&
+        state.step.kind === "queued" &&
+        state.step.copy?.request === event.request
+      ) {
+        return ok({ ...task, state: { ...state, step: { kind: "queued" } } });
+      }
+      return misfit(event, "the task doesn't hold that workspace, or it is in use");
     }
 
     case "progress.reported":
