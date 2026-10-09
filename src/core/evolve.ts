@@ -6,9 +6,14 @@
 import { branchName, phaseRole } from "./task";
 import type {
   ActiveState,
+  EndedState,
   Event,
   Evolved,
+  Leftover,
+  Outcome,
   PhaseState,
+  Proposal,
+  ProposalState,
   SaveResult,
   Stopping,
   Task,
@@ -39,8 +44,72 @@ export function evolve(task: Task | undefined, event: Event): Evolved {
   if (task === undefined) return misfit(event, "there is no such task");
   if (task.id !== event.task) return misfit(event, `it is for task ${event.task}`);
   const state = task.state;
-  if (state.phase === "ended") return misfit(event, "the task has ended");
+  if (state.phase === "ended") return ended(task, state, event);
   return active(task, state, event);
+}
+
+// An ended task records only cleanup, usage and decisions on proposals.
+function ended(task: Task, state: EndedState, event: Event): Evolved {
+  switch (event.type) {
+    case "session.ended": {
+      if (state.agent?.kind !== "stopping" || state.agent.session !== event.session) {
+        return misfit(event, "that session isn't being stopped");
+      }
+      const { agent: _, ...rest } = state;
+      return ok({ ...task, state: savedIn(rest, event.save) });
+    }
+    case "workspace.removed": {
+      const { workspace, copy, ...rest } = state;
+      const keep = {
+        ...(workspace === undefined || workspace.request === event.request ? {} : { workspace }),
+        ...(copy === undefined || copy.request === event.request ? {} : { copy }),
+      };
+      if (workspace?.request !== event.request && copy?.request !== event.request) {
+        return misfit(event, "the task doesn't hold that workspace");
+      }
+      return ok({ ...task, state: { ...rest, ...keep } });
+    }
+    case "proposals.approved":
+    case "proposals.denied": {
+      const decision: ProposalState["decision"] =
+        event.type === "proposals.approved" ? "approved" : "denied";
+      for (const index of event.which) {
+        if (state.proposals[index]?.decision !== "pending") {
+          return misfit(event, `proposal ${index} isn't pending`);
+        }
+      }
+      const proposals = state.proposals.map((p, index) =>
+        event.which.includes(index) ? { ...p, decision } : p,
+      );
+      return ok({ ...task, state: { ...state, proposals } });
+    }
+    default:
+      return misfit(event, "the task has ended");
+  }
+}
+
+// The task ends. It keeps what its agent still runs in, and the agent
+// itself if it is starting or stopping, so the cleanup can finish.
+function end(task: Task, state: ActiveState, outcome: Outcome, proposals: Proposal[]): Evolved {
+  const step = state.step;
+  const agent: Leftover | undefined =
+    step.kind === "starting"
+      ? { kind: "starting", request: step.request }
+      : step.kind === "stopping"
+        ? { kind: "stopping", session: step.session, reason: step.reason }
+        : undefined;
+  const copy = "copy" in step ? step.copy : undefined;
+  return ok({
+    ...task,
+    state: {
+      phase: "ended",
+      outcome,
+      proposals: proposals.map((p) => ({ ...p, decision: "pending" })),
+      ...(agent === undefined ? {} : { agent }),
+      ...(state.workspace === undefined ? {} : { workspace: state.workspace }),
+      ...(copy === undefined ? {} : { copy }),
+    },
+  });
 }
 
 function active(task: Task, state: ActiveState, event: Event): Evolved {
@@ -98,7 +167,8 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         const { kind: _, ...proceed } = outcome;
         return ok({ ...task, state: { ...state, step: { ...state.step, proceed } } });
       }
-      return misfit(event, "not built yet");
+      if (outcome.kind === "split") return end(task, state, { kind: "split" }, outcome.proposals);
+      return end(task, state, { kind: "declined", reason: outcome.reason }, []);
     }
 
     case "session.ended": {

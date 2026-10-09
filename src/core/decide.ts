@@ -6,6 +6,7 @@
 import { advance } from "./advance";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
+import { decideProposals } from "./proposals";
 import { stopped } from "./stop";
 import {
   heldPaths,
@@ -60,21 +61,24 @@ export function decide(task: Task | undefined, input: Input, _config: Config): D
 
 // An ended task takes only what cleans up after it, usage, and your
 // decisions on its proposals. Late replies were handled before.
-function judgeEnded(draft: Draft, _state: EndedState, input: Input): string | undefined {
+function judgeEnded(draft: Draft, state: EndedState, input: Input): string | undefined {
   const ended = `task ${draft.task.id} has ended`;
   switch (input.sender) {
     case "plugin":
+      if (input.kind === "session_stopped") {
+        stopped(draft, input);
+        return undefined;
+      }
       return input.kind === "session_started" ||
         input.kind === "session_failed" ||
-        input.kind === "session_ended" ||
-        input.kind === "session_stopped"
+        input.kind === "session_ended"
         ? "not built yet"
         : ended;
     case "daemon":
       return input.kind === "usage" ? "not built yet" : ended;
     case "you":
       return input.kind === "approve_proposals" || input.kind === "deny_proposals"
-        ? "not built yet"
+        ? decideProposals(draft, state, input)
         : ended;
     default:
       return ended;
@@ -91,6 +95,16 @@ function judge(draft: Draft, state: ActiveState, input: Input): string | undefin
       return fromDaemon(draft, state, input);
     case "plugin":
       return reply(draft, input);
+    case "you":
+      return fromYou(draft, state, input);
+  }
+}
+
+function fromYou(draft: Draft, _state: ActiveState, input: YouInput): string | undefined {
+  switch (input.kind) {
+    case "approve_proposals":
+    case "deny_proposals":
+      return `task ${draft.task.id} has no proposals until it ends`;
     default:
       return "not built yet";
   }

@@ -262,3 +262,147 @@ describe("the planner proceeds", () => {
     expect(run.last).toEqual({ ok: true, events: [], commands: [] });
   });
 });
+
+const proposals = [
+  { title: "Export headers", description: "Write headers on empty reports" },
+  { title: "Export footers", description: "Write footers too" },
+];
+
+const split = () => agent({ session: 2, role: "planner", kind: "split", proposals });
+
+describe("the planner splits or declines", () => {
+  test("a split ends the task at once, while the planner stops without saving", () => {
+    const run = more(planning(), [split()]);
+    expect(types(run.events)).toEqual(["session.stopping", "task.triaged"]);
+    expect(run.commands).toEqual([{ kind: "stop_session", task: "t1", session: 2, save: false }]);
+    expect(taskOf(run).state).toEqual({
+      phase: "ended",
+      outcome: { kind: "split" },
+      proposals: proposals.map((p) => ({ ...p, decision: "pending" })),
+      agent: { kind: "stopping", session: 2, reason: "reported" },
+      workspace: { request: 1, path: "/w/t1", branch: "skel/t1-fix-export", unsaved: false },
+    });
+  });
+
+  test("a split with no proposals is refused", () => {
+    const run = more(planning(), [
+      agent({ session: 2, role: "planner", kind: "split", proposals: [] }),
+    ]);
+    expect(refused(run.last)).toBe("a split needs at least one proposal");
+  });
+
+  test("a decline ends the task with its reason", () => {
+    const run = more(planning(), [
+      agent({ session: 2, role: "planner", kind: "decline", reason: "Fixed in #131" }),
+    ]);
+    const state = taskOf(run).state;
+    expect(state.phase === "ended" && state.outcome).toEqual({
+      kind: "declined",
+      reason: "Fixed in #131",
+    });
+    expect(state.phase === "ended" && state.proposals).toEqual([]);
+  });
+
+  test("a decline with no reason is refused", () => {
+    const run = more(planning(), [
+      agent({ session: 2, role: "planner", kind: "decline", reason: "" }),
+    ]);
+    expect(refused(run.last)).toBe("a decline needs a reason");
+  });
+
+  test("once the planner's stop is confirmed, the workspace and its branch are removed", () => {
+    const run = more(planning(), [
+      split(),
+      plugin({ kind: "session_stopped", session: 2, save: "nothing" }),
+    ]);
+    expect(types(run.events)).toEqual([
+      "session.stopping",
+      "task.triaged",
+      "session.ended",
+      "workspace.removed",
+    ]);
+    expect(run.commands.at(-1)).toEqual({
+      kind: "remove_workspace",
+      task: "t1",
+      path: "/w/t1",
+      deleteBranch: "skel/t1-fix-export",
+    });
+    const state = taskOf(run).state;
+    expect(state.phase === "ended" && [state.agent, state.workspace]).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  test("if the save fails, the workspace is kept for good", () => {
+    const run = more(planning(), [
+      split(),
+      plugin({ kind: "session_stopped", session: 2, save: "failed" }),
+    ]);
+    expect(run.commands.filter((c) => c.kind === "remove_workspace")).toEqual([]);
+    const state = taskOf(run).state;
+    expect(state.phase === "ended" && state.agent).toBeUndefined();
+    expect(state.phase === "ended" && state.workspace?.unsaved).toBe(true);
+  });
+
+  test("an ended task still refuses anything else", () => {
+    const run = more(planning(), [split(), you({ kind: "start" })]);
+    expect(refused(run.last)).toBe("task t1 has ended");
+  });
+});
+
+describe("your decisions on a split's proposals", () => {
+  const ended = () => more(planning(), [split()]);
+
+  test("approving one asks the task source to add it", () => {
+    const run = more(ended(), [you({ kind: "approve_proposals", which: [1] })]);
+    expect(types(run.events)).toEqual(["proposals.approved"]);
+    expect(run.commands).toEqual([
+      { kind: "add_tasks", task: "t1", proposals: proposals.slice(1) },
+    ]);
+    const state = taskOf(run).state;
+    expect(state.phase === "ended" && state.proposals.map((p) => p.decision)).toEqual([
+      "pending",
+      "approved",
+    ]);
+  });
+
+  test("denying one adds nothing", () => {
+    const run = more(ended(), [you({ kind: "deny_proposals", which: [0] })]);
+    expect(types(run.events)).toEqual(["proposals.denied"]);
+    expect(run.commands).toEqual([]);
+    const state = taskOf(run).state;
+    expect(state.phase === "ended" && state.proposals.map((p) => p.decision)).toEqual([
+      "denied",
+      "pending",
+    ]);
+  });
+
+  test("a proposal already decided can't be decided again", () => {
+    const run = more(ended(), [
+      you({ kind: "approve_proposals", which: [0] }),
+      you({ kind: "deny_proposals", which: [0] }),
+    ]);
+    expect(refused(run.last)).toBe("proposal 0 is already approved");
+  });
+
+  test("a proposal that doesn't exist is refused", () => {
+    const run = more(ended(), [you({ kind: "approve_proposals", which: [2] })]);
+    expect(refused(run.last)).toBe("there is no proposal 2");
+  });
+
+  test("naming no proposal is refused", () => {
+    const run = more(ended(), [you({ kind: "approve_proposals", which: [] })]);
+    expect(refused(run.last)).toBe("name at least one proposal");
+  });
+
+  test("naming the same proposal twice is refused", () => {
+    const run = more(ended(), [you({ kind: "approve_proposals", which: [0, 0] })]);
+    expect(refused(run.last)).toBe("proposal 0 is named twice");
+  });
+
+  test("a task that hasn't ended has no proposals to decide", () => {
+    const run = more(planning(), [you({ kind: "approve_proposals", which: [0] })]);
+    expect(refused(run.last)).toBe("task t1 has no proposals until it ends");
+  });
+});

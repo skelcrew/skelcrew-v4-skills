@@ -553,7 +553,8 @@ role doesn't work in triage, so the general rules refuse them.
   ended task waits for the stop, then removes the workspace and its branch. This way the
   ending is never held up by a slow stop.
 - **Proposals are decided one by one.** Each approve or deny names the proposals it covers,
-  by their position from 0. A decided proposal can't be decided again.
+  by their position from 0. A decided proposal can't be decided again. Naming the same proposal
+  twice in one decision is refused, since it is most likely a typo.
 - **An empty proceed brief is refused.** The spec says the brief is always there.
 
 **Stories this part reaches:** story 5, a split.

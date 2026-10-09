@@ -25,6 +25,19 @@ export function triageCall(
       draft.record({ type: "task.triaged", outcome: { kind: "proceed", ...call } });
       return undefined;
     }
+    case "split":
+      if (input.proposals.length === 0) return "a split needs at least one proposal";
+      stopAgent(draft, input.session, "reported", false);
+      draft.record({
+        type: "task.triaged",
+        outcome: { kind: "split", proposals: input.proposals },
+      });
+      return undefined;
+    case "decline":
+      if (input.reason.trim() === "") return "a decline needs a reason";
+      stopAgent(draft, input.session, "reported", false);
+      draft.record({ type: "task.triaged", outcome: { kind: "decline", reason: input.reason } });
+      return undefined;
     default:
       return "not built yet";
   }

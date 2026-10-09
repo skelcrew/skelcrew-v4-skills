@@ -4,6 +4,8 @@ import { advance } from "./advance";
 import type { Draft } from "./draft";
 import type { EndReason, PluginInput, Spec } from "./types";
 
+type Stopped = Extract<PluginInput, { kind: "session_stopped" }>;
+
 // Lets the agent go. The task keeps its slot until the stop is confirmed.
 export function stopAgent(
   draft: Draft,
@@ -24,12 +26,13 @@ export function stopAgent(
 
 // The stop the task waits on is confirmed. The session ends, and the task
 // moves on to whatever the agent's report decided.
-export function stopped(
-  draft: Draft,
-  input: Extract<PluginInput, { kind: "session_stopped" }>,
-): void {
+export function stopped(draft: Draft, input: Stopped): void {
   const before = draft.task.state;
-  if (before.phase === "ended" || before.step.kind !== "stopping") return;
+  if (before.phase === "ended") {
+    endedStopped(draft, input);
+    return;
+  }
+  if (before.step.kind !== "stopping") return;
   draft.record({
     type: "session.ended",
     session: input.session,
@@ -53,4 +56,45 @@ export function stopped(
     });
   }
   advance(draft);
+}
+
+// An ended task's last agent has stopped. What it ran in is removed now,
+// unless its work couldn't be saved. A split or decline deletes the branch
+// too.
+function endedStopped(draft: Draft, input: Stopped): void {
+  const before = draft.task.state;
+  if (before.phase !== "ended" || before.agent?.kind !== "stopping") return;
+  draft.record({
+    type: "session.ended",
+    session: input.session,
+    reason: before.agent.reason,
+    save: input.save,
+  });
+  const after = draft.task.state;
+  if (after.phase !== "ended") return;
+  if (after.copy !== undefined) removeWorkspace(draft, after.copy.request, after.copy.path);
+  if (after.workspace !== undefined && !after.workspace.unsaved) {
+    const branch = after.outcome.kind === "split" || after.outcome.kind === "declined";
+    removeWorkspace(
+      draft,
+      after.workspace.request,
+      after.workspace.path,
+      branch ? after.workspace.branch : undefined,
+    );
+  }
+}
+
+export function removeWorkspace(
+  draft: Draft,
+  request: number,
+  path: string,
+  deleteBranch?: string,
+): void {
+  draft.record({ type: "workspace.removed", request });
+  draft.send({
+    kind: "remove_workspace",
+    task: draft.task.id,
+    path,
+    ...(deleteBranch === undefined ? {} : { deleteBranch }),
+  });
 }
