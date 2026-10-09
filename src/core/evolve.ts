@@ -321,7 +321,12 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       if (step.kind !== "queued" && step.kind !== "awaiting_approval" && step.kind !== "ready") {
         return misfit(event, `the step is ${step.kind}`);
       }
-      const ready: LastStep = { kind: "ready", output: event.output, critical: event.critical };
+      const ready: LastStep = {
+        kind: "ready",
+        output: event.output,
+        critical: event.critical,
+        signed: false,
+      };
       return ok({ ...task, state: withLast(state, ready) });
     }
 
@@ -338,7 +343,10 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       if (state.phase === "triage" || state.step.kind !== "awaiting_approval") {
         return misfit(event, "the task isn't waiting for approval");
       }
-      return ok({ ...task, state: withLast(state, { ...state.step, kind: "ready" }) });
+      return ok({
+        ...task,
+        state: withLast(state, { ...state.step, kind: "ready", signed: true }),
+      });
 
     case "approval.denied":
       if (step.kind !== "awaiting_approval")
@@ -367,6 +375,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           kind: "ready",
           output: state.step.output,
           critical: state.step.critical,
+          signed: state.step.signed,
         }),
       });
 

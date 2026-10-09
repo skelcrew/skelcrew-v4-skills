@@ -95,6 +95,7 @@ describe("after a pass", () => {
       request: 6,
       output: shipOutput,
       critical: false,
+      signed: false,
     });
   });
 
@@ -119,6 +120,7 @@ describe("after a pass", () => {
       kind: "ready",
       output: shipOutput,
       critical: false,
+      signed: false,
     });
     expect(state.phase === "review" && state.hold).toEqual({
       kind: "failed",

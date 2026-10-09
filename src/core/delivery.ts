@@ -39,17 +39,21 @@ export function ready(draft: Draft, output: Output, files: string[], approve: bo
     draft.config.critical.some((pattern) => new Bun.Glob(pattern).match(file)),
   );
   draft.record({ type: "output.ready", output, critical });
-  if (approve || critical) {
+  deliver(draft, approve);
+}
+
+// Hands the ready output over, unless the task is held. Every delivery
+// checks for your sign-off first: flagged or critical work you haven't
+// signed off waits for you instead.
+export function deliver(draft: Draft, approve?: boolean): void {
+  const state = draft.task.state;
+  if (state.phase === "ended" || state.phase === "triage" || state.step.kind !== "ready") return;
+  const needsYou = (approve ?? state.approve) || state.step.critical;
+  if (needsYou && !state.step.signed) {
     draft.record({ type: "approval.requested" });
     return;
   }
-  deliver(draft);
-}
-
-// Hands the ready output over, unless the task is held.
-export function deliver(draft: Draft): void {
-  const state = draft.task.state;
-  if (state.phase === "ended" || state.hold !== undefined || state.step.kind !== "ready") return;
+  if (state.hold !== undefined) return;
   const request = draft.nextRequest();
   const output = state.step.output;
   draft.record({ type: "output.requested", request });

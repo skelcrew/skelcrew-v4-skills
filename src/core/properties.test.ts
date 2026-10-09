@@ -397,6 +397,81 @@ function usageBroken(world: World, before: Map<string, number>): string | undefi
   return undefined;
 }
 
+// A task carries exactly its phase's and step's fields. v3 once moved
+// phase by spreading the old task, and carried old fields into the new
+// phase. Each entry lists the fields always there, then those that may be.
+type Shape = [string[], string[]];
+const sides = ["question", "hold", "lifted"];
+const plan = ["intent", "rigor", "approve", "brief", "loops"];
+const phases: Record<string, Shape> = {
+  triage: [
+    ["phase", "overrides", "step", "attached"],
+    ["workspace", ...sides],
+  ],
+  build: [
+    ["phase", ...plan, "step", "attached"],
+    ["spec", "workspace", "handback", ...sides],
+  ],
+  review: [
+    ["phase", ...plan, "workspace", "handover", "reviewed", "step", "attached"],
+    ["spec", ...sides],
+  ],
+  ended: [
+    ["phase", "outcome", "proposals"],
+    ["agent", "workspace", "copy"],
+  ],
+};
+const last: Shape = [["kind", "output", "critical", "signed"], []];
+const steps: Record<string, Shape> = {
+  "triage queued": [["kind"], []],
+  "triage creating_workspace": [["kind", "request"], []],
+  "triage starting": [["kind", "request"], []],
+  "triage running": [["kind", "session"], []],
+  "triage stopping": [["kind", "session", "reason", "save"], ["proceed"]],
+  "build queued": [["kind"], ["handover"]],
+  "build creating_workspace": [["kind", "request"], []],
+  "build starting": [["kind", "request", "intent"], []],
+  "build running": [["kind", "session", "intent"], []],
+  "build stopping": [["kind", "session", "reason", "save"], ["handover"]],
+  "build merging": [["kind", "request", "handover"], []],
+  "review queued": [["kind"], ["copy"]],
+  "review creating_workspace": [["kind", "request"], []],
+  "review starting": [["kind", "request", "copy"], []],
+  "review running": [["kind", "session", "copy"], []],
+  "review stopping": [["kind", "session", "reason", "save", "copy"], ["verdict"]],
+};
+for (const phase of ["build", "review"]) {
+  steps[`${phase} ready`] = last;
+  steps[`${phase} awaiting_approval`] = last;
+  steps[`${phase} delivering`] = [[...last[0], "request"], []];
+}
+
+function misshapen(name: string, value: object, [always, maybe]: Shape): string | undefined {
+  const keys = Object.keys(value);
+  const extra = keys.filter((key) => !always.includes(key) && !maybe.includes(key));
+  const missing = always.filter((key) => !keys.includes(key));
+  if (extra.length > 0) return `${name} carries ${extra.join(", ")}`;
+  if (missing.length > 0) return `${name} lacks ${missing.join(", ")}`;
+  return undefined;
+}
+
+function shapeBroken(world: World): string | undefined {
+  for (const task of world.tasks.values()) {
+    const state = task.state;
+    const phase = phases[state.phase];
+    if (phase === undefined) return `shape: ${task.id} is in an unknown phase`;
+    const problem = misshapen(`${task.id} in ${state.phase}`, state, phase);
+    if (problem !== undefined) return `shape: ${problem}`;
+    if (state.phase === "ended") continue;
+    const name = `${state.phase} ${state.step.kind}`;
+    const step = steps[name];
+    if (step === undefined) return `shape: ${task.id} has no step ${name}`;
+    const stepProblem = misshapen(`${task.id}'s step ${name}`, state.step, step);
+    if (stepProblem !== undefined) return `shape: ${stepProblem}`;
+  }
+  return undefined;
+}
+
 function replay(events: Event[]): Task | undefined {
   let task: Task | undefined;
   for (const event of events) {
@@ -432,7 +507,8 @@ function run(choices: number[], seen?: Set<EventType>): string | undefined {
     const problem =
       broken(world, step) ??
       slotsBroken(world, step, slotsBefore) ??
-      usageBroken(world, usageBefore);
+      usageBroken(world, usageBefore) ??
+      shapeBroken(world);
     if (problem !== undefined) {
       return `step ${i / 2}, ${input.sender} ${input.kind}: ${problem}\n${trail.slice(-12).join("\n")}`;
     }

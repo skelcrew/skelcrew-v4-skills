@@ -265,3 +265,29 @@ describe("a change of approval", () => {
     expect(types(run.events).slice(-2)).toEqual(["task.set", "approval.requested"]);
   });
 });
+
+describe("found by the property tests", () => {
+  test("approval set during a delivery that then fails is asked for before the retry delivers", () => {
+    const failed = more(reviewing(), [
+      pass(),
+      stopped(5, "nothing"),
+      you({ kind: "set", approve: true }),
+      plugin({ kind: "output_failed", request: 6, error: "down" }),
+    ]);
+    const run = more(failed, [you({ kind: "retry" })]);
+    expect(run.commands.filter((c) => c.kind === "deliver_output")).toEqual([]);
+    expect(types(run.events)).toEqual(["task.resumed", "approval.requested"]);
+  });
+
+  test("an approval given before a failed delivery still counts on the retry", () => {
+    const failed = more(reviewing(), [
+      you({ kind: "set", approve: true }),
+      pass(),
+      stopped(5, "nothing"),
+      you({ kind: "approve" }),
+      plugin({ kind: "output_failed", request: 6, error: "down" }),
+    ]);
+    const run = more(failed, [you({ kind: "retry" })]);
+    expect(run.commands.map((c) => c.kind)).toEqual(["deliver_output"]);
+  });
+});

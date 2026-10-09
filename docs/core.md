@@ -1006,3 +1006,14 @@ just raised them, or the only tasks newly counted are ones whose agent is being 
 stop must hold its slot, so nothing new starts while it finishes. But it can't wait for a
 free slot either: an agent with an open question holds no slot, and if it crashes, its stop
 goes out at once. A stop is cleanup, not putting an agent to work.
+
+**Found by the property tests after part 10, and decided**
+
+- **Every delivery checks for your sign-off first.** The output records whether you have
+  signed it off. Before any delivery, a task with the approval flag or a critical change
+  that you haven't signed off waits for you instead. The property tests found why: you set
+  the flag while a delivery was in flight, the delivery failed, and your retry delivered
+  without your sign-off. An approval given before a failed delivery still counts on the
+  retry.
+- **A task carries exactly its phase's and step's fields.** The property tests check this
+  after every step, since v3 once carried old fields into a new phase.

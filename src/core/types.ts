@@ -98,9 +98,9 @@ export type EndReason = "reported" | "stopped" | "crashed";
 // `save` says whether the stop saves the agent's work. Only then does its
 // reply say anything about the workspace.
 export type Stopping = { kind: "stopping"; session: number; reason: EndReason; save: boolean };
-// The last steps carry the output to hand over, and whether its changes
-// touch a critical path.
-export type Last = { output: Output; critical: boolean };
+// The last steps carry the output to hand over, whether its changes touch
+// a critical path, and whether you have signed it off.
+export type Last = { output: Output; critical: boolean; signed: boolean };
 // The output waits to be delivered. A task is here only while it is held.
 export type Ready = Last & { kind: "ready" };
 export type AwaitingApproval = Last & { kind: "awaiting_approval" };
@@ -366,7 +366,7 @@ export type Event = Stamp &
     | { type: "main.failed"; request: number; error: string }
     | { type: "review.passed"; session: number; evidence: string }
     | { type: "review.changes_requested"; session: number; findings: string }
-    | ({ type: "output.ready" } & Last)
+    | ({ type: "output.ready" } & Omit<Last, "signed">)
     | { type: "approval.requested" }
     | { type: "approval.given" }
     | { type: "approval.denied"; note: string }
