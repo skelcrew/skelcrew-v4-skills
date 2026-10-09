@@ -1,11 +1,16 @@
 // Judges one input against one task. It reads as an outline: a new task,
-// then a missing task, then outside changes, then the sender, then the
-// phase. `docs/core.md` has the rules, under "How every input is judged".
+// then a missing task, then outside changes, then late replies, then an
+// ended task, then the sender, then the phase. `docs/core.md` has the
+// rules, under "How every input is judged".
 
+import { advance } from "./advance";
+import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
 import {
+  heldPaths,
   heldWorkspaces,
   holdsSession,
+  holdText,
   phaseRole,
   plainBrief,
   runningSession,
@@ -14,11 +19,13 @@ import {
   waitsOn,
 } from "./task";
 import type {
+  ActiveState,
   AgentInput,
   Command,
   Config,
+  DaemonInput,
   Decision,
-  Event,
+  EndedState,
   Input,
   PluginInput,
   Source,
@@ -42,12 +49,127 @@ export function decide(task: Task | undefined, input: Input, _config: Config): D
     const late = lateReply(task, input);
     if (late !== undefined) return late;
   }
-  if (task.state.phase === "ended") return refuse(`task ${task.id} has ended`);
-  if (input.sender === "agent") {
-    const stranger = notTheAgent(task, input);
-    if (stranger !== undefined) return refuse(stranger);
+  const draft = new Draft(task, input);
+  const state = task.state;
+  const refusal =
+    state.phase === "ended" ? judgeEnded(draft, state, input) : judge(draft, state, input);
+  return refusal === undefined ? draft.done() : refuse(refusal);
+}
+
+// An ended task takes only what cleans up after it, usage, and your
+// decisions on its proposals. Late replies were handled before.
+function judgeEnded(draft: Draft, _state: EndedState, input: Input): string | undefined {
+  const ended = `task ${draft.task.id} has ended`;
+  switch (input.sender) {
+    case "plugin":
+      return input.kind === "session_started" ||
+        input.kind === "session_failed" ||
+        input.kind === "session_ended" ||
+        input.kind === "session_stopped"
+        ? "not built yet"
+        : ended;
+    case "daemon":
+      return input.kind === "usage" ? "not built yet" : ended;
+    case "you":
+      return input.kind === "approve_proposals" || input.kind === "deny_proposals"
+        ? "not built yet"
+        : ended;
+    default:
+      return ended;
   }
-  return refuse("not built yet");
+}
+
+// Judges an input against a task that hasn't ended. Returns the reason
+// when it is refused.
+function judge(draft: Draft, state: ActiveState, input: Input): string | undefined {
+  switch (input.sender) {
+    case "agent":
+      return notTheAgent(draft.task, input) ?? "not built yet";
+    case "daemon":
+      return fromDaemon(draft, state, input);
+    case "plugin":
+      return reply(draft, input);
+    default:
+      return "not built yet";
+  }
+}
+
+function fromDaemon(draft: Draft, state: ActiveState, input: DaemonInput): string | undefined {
+  switch (input.kind) {
+    case "start":
+      if (state.hold !== undefined) return `task ${draft.task.id} is held: ${holdText(state.hold)}`;
+      if (state.step.kind !== "queued") return `task ${draft.task.id} isn't waiting for a slot`;
+      advance(draft);
+      return undefined;
+    default:
+      return "not built yet";
+  }
+}
+
+// A reply the task waits on. Late replies never get here.
+function reply(draft: Draft, input: PluginInput): string | undefined {
+  switch (input.kind) {
+    case "workspace_created":
+      draft.record({ type: "workspace.created", request: input.request, path: input.path });
+      advance(draft);
+      return undefined;
+    case "workspace_failed":
+      draft.record({ type: "workspace.failed", request: input.request, error: input.error });
+      draft.record({
+        type: "task.held",
+        hold: { kind: "failed", what: "workspace", error: input.error },
+      });
+      return undefined;
+    case "session_started":
+      draft.record({ type: "session.started", session: input.request, harnessId: input.harnessId });
+      return undefined;
+    case "session_failed":
+      draft.record({ type: "session.failed", request: input.request, error: input.error });
+      draft.record({
+        type: "task.held",
+        hold: { kind: "failed", what: "session", error: input.error },
+      });
+      return undefined;
+    default:
+      return "not built yet";
+  }
+}
+
+function isArrival(input: Input): input is Arrival {
+  return (
+    (input.sender === "you" && input.kind === "add") ||
+    (input.sender === "plugin" && input.kind === "task_arrived")
+  );
+}
+
+function receive(input: Arrival): Decision {
+  const source: Source = input.sender === "you" ? { kind: "local", id: input.task } : input.source;
+  const overrides = input.sender === "you" ? settingsOf(input) : {};
+  const received = stamp(
+    {
+      type: "task.received",
+      source,
+      title: input.title,
+      description: input.description,
+      overrides,
+    },
+    input,
+  );
+  const created = evolve(undefined, received);
+  if (!created.ok) return refuse(`the core made a mistake: ${created.reason}`);
+  const draft = new Draft(created.task, input, [received]);
+  if (overrides.intent !== undefined && overrides.rigor !== undefined) {
+    draft.record({
+      type: "phase.started",
+      phase: "build",
+      intent: overrides.intent,
+      rigor: overrides.rigor,
+      approve: overrides.approve ?? false,
+      brief: plainBrief(input),
+      loops: 0,
+    });
+  }
+  return draft.done();
 }
 
 // A reply the task no longer waits on is late. It is accepted with only
@@ -59,11 +181,11 @@ function lateReply(task: Task, input: PluginInput): Decision | undefined {
     case "workspace_created":
     case "workspace_failed": {
       if (waitsOn(task, "creating_workspace", input.request)) return undefined;
-      const cleanup: Command[] =
-        input.kind === "workspace_created" && !heldWorkspaces(task).includes(input.request)
-          ? [{ kind: "remove_workspace", task: task.id, path: input.path }]
-          : [];
-      return accept(cleanup);
+      const stray =
+        input.kind === "workspace_created" &&
+        !heldWorkspaces(task).includes(input.request) &&
+        !heldPaths(task).includes(input.path);
+      return accept(stray ? [{ kind: "remove_workspace", task: task.id, path: input.path }] : []);
     }
     case "session_started":
     case "session_failed": {
@@ -93,40 +215,8 @@ function lateReply(task: Task, input: PluginInput): Decision | undefined {
   }
 }
 
-function isArrival(input: Input): input is Arrival {
-  return (
-    (input.sender === "you" && input.kind === "add") ||
-    (input.sender === "plugin" && input.kind === "task_arrived")
-  );
-}
-
-function receive(input: Arrival): Decision {
-  const draft = new Draft(undefined, input);
-  const source: Source = input.sender === "you" ? { kind: "local", id: input.task } : input.source;
-  const overrides = input.sender === "you" ? settingsOf(input) : {};
-  draft.record({
-    type: "task.received",
-    source,
-    title: input.title,
-    description: input.description,
-    overrides,
-  });
-  if (overrides.intent !== undefined && overrides.rigor !== undefined) {
-    draft.record({
-      type: "phase.started",
-      phase: "build",
-      intent: overrides.intent,
-      rigor: overrides.rigor,
-      approve: overrides.approve ?? false,
-      brief: plainBrief(input),
-      loops: 0,
-    });
-  }
-  return draft.done();
-}
-
 // Only the session the step holds as running is heard, and only for the
-// role that works the phase.
+// role it was started for, which must work the phase.
 function notTheAgent(task: Task, input: AgentInput): string | undefined {
   if (runningSession(task) !== input.session) {
     return `session ${input.session} isn't the task's agent`;
@@ -143,49 +233,4 @@ function settingsOf(input: Extract<YouInput, { kind: "add" }>) {
     ...(input.rigor === undefined ? {} : { rigor: input.rigor }),
     ...(input.approve === undefined ? {} : { approve: input.approve }),
   };
-}
-
-function accept(commands: Command[]): Decision {
-  return { ok: true, events: [], commands };
-}
-
-function refuse(reason: string): Decision {
-  return { ok: false, reason };
-}
-
-type Without<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
-export type EventBody = Without<Event, "v" | "task" | "at">;
-
-// The events and commands of one decision. Each event is applied as it is
-// recorded, so the next step of the decision reads the task as it now is.
-class Draft {
-  readonly events: Event[] = [];
-  readonly commands: Command[] = [];
-  private broken: string | undefined;
-
-  constructor(
-    public task: Task | undefined,
-    private readonly input: Input,
-  ) {}
-
-  record(body: EventBody): void {
-    if (this.broken !== undefined) return;
-    const event: Event = { ...body, v: 1, task: this.input.task, at: this.input.at };
-    const next = evolve(this.task, event);
-    if (!next.ok) {
-      this.broken = next.reason;
-      return;
-    }
-    this.task = next.task;
-    this.events.push(event);
-  }
-
-  send(command: Command): void {
-    this.commands.push(command);
-  }
-
-  done(): Decision {
-    if (this.broken !== undefined) return refuse(`the core made a mistake: ${this.broken}`);
-    return { ok: true, events: this.events, commands: this.commands };
-  }
 }

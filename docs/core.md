@@ -483,3 +483,77 @@ world records which workspaces and sessions really exist. After every step:
 | 22 | Folding the task's events through `evolve` from nothing gives the same task. |
 
 Rules 16 and 17 are about the loop and store, which come in the next milestone.
+
+**The parts that follow**
+
+The core is built one part at a time, in this order. Each part's table names the part that
+covers an input it leaves out.
+
+| Part | Covers |
+|---|---|
+| 2 | triage, and your decisions on a split's proposals |
+| 3 | build, through handover and merging main |
+| 4 | review |
+| 5 | approval and delivery |
+| 6 | stopping an agent: pause, resume, retry, kill, a crash, giving up, a failed save |
+| 7 | attach and detach |
+| 8 | questions: ask, reply, a tracker reply, delivering an answer |
+| 9 | changing intent, rigor or approval |
+| 10 | the scheduler: slots, start, start now, usage |
+
+### Part 2: triage
+
+**Starting triage.** The scheduler's start reaches a queued triage task that isn't held.
+
+- With no workspace, the task's workspace is requested: `workspace.requested` and a create
+  workspace command for the task's branch.
+- With a workspace already, the planner is requested: `session.requested` and a start
+  session command. The planner gets the title and description as its brief, the workspace,
+  and no edit permission.
+
+**The table.** A cell names the events, then the commands. "Late" means the general rule for
+late replies applies. A planner input in any step but running is refused by the general
+rules, since only the running session is heard.
+
+| Step | Input | Result |
+|---|---|---|
+| queued | start | as above |
+| creating workspace | workspace created | `workspace.created`, then the planner is requested |
+| creating workspace | workspace failed | `workspace.failed`, then held as a failed workspace |
+| starting | session started | `session.started`, the step is running |
+| starting | session failed | `session.failed`, then held as a failed session |
+| running | proceed | refused with an open question, or with a spec on a `light` call. Otherwise `session.stopping` (reported), then `task.triaged` with the call. A stop that saves, writing the spec first when there is one. |
+| running | split | refused with an open question or no proposals. Otherwise `session.stopping` (reported) and `task.triaged`. The task ends as split. A stop that doesn't save. |
+| running | decline | refused with an open question or an empty reason. Otherwise as split, ending as declined. |
+| stopping | session stopped | `session.ended`. After a proceed: `phase.started` for build, then the builder is requested. A failed save holds the task first (part 6), and then no builder is requested. |
+| stopping | session ended | accepted, and nothing happens. The stop in flight will answer. |
+| ended, stopping | session stopped | `session.ended`. If the save worked, `workspace.removed` and a remove command that deletes the branch. If it failed, the workspace is kept. |
+| ended | approve proposals | refused if the list is empty, or names a proposal that doesn't exist or is decided. Otherwise `proposals.approved` and an add tasks command with them. |
+| ended | deny proposals | the same checks, then `proposals.denied`. |
+| any | pause, resume, retry, kill, give up, a crash | part 6 |
+| any | attach, detach | part 7 |
+| any | ask, reply, deliver answer | part 8 |
+| any | set | part 9 |
+| any | start now, usage | part 10 |
+| any | other replies | late |
+
+The proceed, split and decline inputs from a builder or tester never reach this table. Their
+role doesn't work in triage, so the general rules refuse them.
+
+**Decisions**
+
+- **Your overrides win over the planner's call, field by field.** Build starts with your
+  intent, rigor and approval where you gave them, and the planner's otherwise.
+- **A spec is refused only when the planner itself calls `light`.** If you set `light` and the
+  planner calls `full` with a spec, the spec is kept, since it is already written. The spec
+  says a `light` task never gets one. That rule is about the planner's own call.
+- **The planner's stop saves only to commit the spec.** The planner has no edit permission,
+  so there is nothing else to save. A split or decline stops it without saving.
+- **The task ends as split or declined at once**, while the planner is still stopping. The
+  ended task waits for the stop, then removes the workspace and its branch. This way the
+  ending is never held up by a slow stop.
+- **Proposals are decided one by one.** Each approve or deny names the proposals it covers,
+  by their position from 0. A decided proposal can't be decided again.
+- **An empty proceed brief is refused.** The spec says the brief is always there.
+
+**Stories this part reaches:** story 5, a split.

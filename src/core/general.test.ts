@@ -27,6 +27,14 @@ describe("a reply the task no longer waits on", () => {
     });
   });
 
+  test("a late workspace at the path of the one the task holds is left alone", () => {
+    const decision = judge(
+      planning,
+      plugin({ kind: "workspace_created", request: 7, path: "/w/t1" }),
+    );
+    expect(decision).toEqual({ ok: true, events: [], commands: [] });
+  });
+
   test("a session started late is stopped without saving", () => {
     const decision = judge(
       planning,

@@ -1,7 +1,7 @@
 // Reading a task. Each question about a task has one answer here, shared
 // by decide, evolve, the scheduler and the tests.
 
-import type { ActiveState, Role, Task } from "./types";
+import type { ActiveState, Hold, Role, Task } from "./types";
 
 // The task's branch, such as `skel/142-empty-export`. The same task always
 // gets the same name.
@@ -87,4 +87,44 @@ export function phaseRole(task: Task): Role | undefined {
 
 export function sessionRole(task: Task, session: number): Role | undefined {
   return task.sessions.find((record) => record.session === session)?.role;
+}
+
+// The paths of the workspaces the task holds.
+export function heldPaths(task: Task): string[] {
+  const state = task.state;
+  const paths: string[] = [];
+  if (state.workspace !== undefined) paths.push(state.workspace.path);
+  if (state.phase === "ended") {
+    if (state.copy !== undefined) paths.push(state.copy.path);
+  } else if (state.phase === "review" && "copy" in state.step && state.step.copy !== undefined) {
+    paths.push(state.step.copy.path);
+  }
+  return paths;
+}
+
+const failedWhat = {
+  workspace: "its workspace couldn't be created",
+  session: "its session couldn't be started",
+  merge: "merging main failed",
+  delivery: "its output couldn't be delivered",
+};
+
+// Why a task is held, in plain words.
+export function holdText(hold: Hold): string {
+  switch (hold.kind) {
+    case "paused":
+      return "you paused it";
+    case "crashed":
+      return hold.exitCode === undefined
+        ? `its session ended without reporting: ${hold.lastLine}`
+        : `its session crashed with exit code ${hold.exitCode}: ${hold.lastLine}`;
+    case "gave_up":
+      return `its agent gave up: ${hold.reason}`;
+    case "loop_cap":
+      return "review asked for changes too many times";
+    case "failed":
+      return failedWhat[hold.what];
+    case "unsaved":
+      return "its work couldn't be saved";
+  }
 }
