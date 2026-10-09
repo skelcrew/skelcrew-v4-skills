@@ -527,7 +527,7 @@ rules, since only the running session is heard.
 | running | decline | refused with an open question or an empty reason. Otherwise as split, ending as declined. |
 | stopping | session stopped | `session.ended`. After a proceed: `phase.started` for build, then the builder is requested. A failed save holds the task first (part 6), and then no builder is requested. |
 | stopping | session ended | accepted, and nothing happens. The stop in flight will answer. |
-| ended, stopping | session stopped | `session.ended`. If the save worked, `workspace.removed` and a remove command that deletes the branch. If it failed, the workspace is kept. |
+| ended, stopping | session stopped | `session.ended`, then `workspace.removed` and a remove command that deletes the branch. The planner's stop doesn't save, so its save result changes nothing (part 6). |
 | ended | approve proposals | refused if the list is empty, or names a proposal that doesn't exist or is decided. Otherwise `proposals.approved` and an add tasks command with them. |
 | ended | deny proposals | the same checks, then `proposals.denied`. |
 | any | pause, resume, retry, kill, give up, a crash | part 6 |
@@ -721,3 +721,69 @@ it left main. Each is matched against every `critical` glob in config.
   `answer`, whose reviewed commit is the handed-over one.
 
 **Stories this part reaches:** stories 1, 2 and 6 in full.
+
+### Part 6: stopping an agent
+
+This part covers everything that lets an agent go or holds a task: pause, resume, retry,
+kill, a crash, giving up and a failed save. A stop always goes as "Stopping an agent" above
+says. The next agent starts only once the stop is confirmed.
+
+**Which stops save.** A builder on `ship` or `try` holds edits, so its stop saves. A builder
+on `answer`, a planner and a tester never save. The planner's stop after proceed is the one
+exception: it writes and commits the spec.
+
+**The table.** "Stop" means `session.stopping` and a stop session command, which saves as
+above.
+
+| Input | Step | Result |
+|---|---|---|
+| pause | not held | `task.paused`. If running, the agent is stopped (stopped). Otherwise a request in flight finishes, and the task rests. |
+| pause | held | refused: already paused, or held for another reason, which would be hidden |
+| resume | paused | `task.resumed` (resume). The hold is lifted and kept as the hold last lifted. A ready output is delivered at once. A queued task waits for the scheduler. |
+| resume | held for another reason | refused: retry it instead |
+| resume | not held | refused |
+| retry | held | `task.resumed` (retry), with the same effects as resume |
+| retry | not held | refused |
+| kill | any step | `task.killed`, or `task.failed` when the task is held at the loop cap. A running agent is stopped first. Workspaces nothing runs in are removed at once, keeping the branch, unless unsaved. The workspace an agent runs in, or is starting in, is removed once that agent's stop is saved. |
+| give up | running | `task.held` (gave up, with the reason), then the agent is stopped (reported). Refused with an empty reason. |
+| a crash | running, or starting that session | `task.held` (crashed, with the exit code and last line), then the agent is stopped (crashed), which saves its work. |
+| a crash | stopping that session | accepted, nothing happens |
+| session started | starting, held | `session.started`, then the agent is stopped (stopped) at once |
+
+**An ended task still waiting on its agent**
+
+| Input | Agent | Result |
+|---|---|---|
+| session started | starting | `session.started`, then the agent is stopped (stopped) |
+| session failed | starting | `session.failed`. The workspace it was starting in is removed, unless unsaved. |
+| a crash | starting | the agent is stopped (crashed) |
+| a crash | stopping | accepted, nothing happens |
+| session stopped | stopping | as in part 2: `session.ended`, then the removal |
+
+**Decisions**
+
+- **Pausing a held task is refused.** Turning a failure into a pause would hide it from the
+  view of tasks waiting on you.
+- **Resume lifts only a pause, and retry lifts any hold.** That follows the spec's two
+  commands.
+- **Kill at the loop cap ends the task as failed.** The spec says `task.failed` is "you gave
+  up on it after a limit was reached". Every other kill ends it as killed.
+- **A killed task keeps its branch**, so its work can still be found. Only a split or a
+  decline deletes the branch.
+- **A request in flight finishes during a pause.** A workspace or a merge can't be called
+  back. When it answers, the task rests, held.
+- **A crash before the start reply is still a crash.** The task waits on that start, so the
+  session is its agent. The stop goes out at once, and the late start reply is then ignored,
+  since the task already holds that session.
+- **Kill doesn't stop a delivery in flight.** If it is confirmed after the kill, nothing more
+  happens, and the log shows the task as killed. You see it in the output's own tool. This
+  is a known gap: the log doesn't record a delivery confirmed after a kill.
+
+- **Only a stop that saves says anything about saving.** Each stop records whether it
+  saves. A "save failed" reply to a stop that doesn't save is ignored: it holds nothing,
+  and marks no workspace unsaved. The property tests found why this matters. A tester runs
+  in its own copy, so its stop's "nothing to save" once cleared the unsaved mark on the
+  task's workspace, and that workspace was then removed. This changes part 2's table: a
+  split's workspace is removed whatever its planner's stop reports.
+
+**Stories this part reaches:** stories 3 and 9 in full, and story 8's kill.

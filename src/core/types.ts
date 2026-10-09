@@ -86,7 +86,9 @@ export type Running = { kind: "running"; session: number };
 // crashed. The stop saves its work in every case.
 export type EndReason = "reported" | "stopped" | "crashed";
 
-export type Stopping = { kind: "stopping"; session: number; reason: EndReason };
+// `save` says whether the stop saves the agent's work. Only then does its
+// reply say anything about the workspace.
+export type Stopping = { kind: "stopping"; session: number; reason: EndReason; save: boolean };
 // The last steps carry the output to hand over, and whether its changes
 // touch a critical path.
 export type Last = { output: Output; critical: boolean };
@@ -205,8 +207,8 @@ export type ProposalState = Proposal & { decision: "pending" | "approved" | "den
 // An agent an ended task still waits on: a start still in flight, which
 // is stopped once it answers, or a stop not yet confirmed.
 export type Leftover =
-  | { kind: "starting"; request: number }
-  | { kind: "stopping"; session: number; reason: EndReason };
+  | { kind: "starting"; request: number; role: Role; save: boolean }
+  | { kind: "stopping"; session: number; reason: EndReason; save: boolean };
 
 // An ended task. `agent` is the agent it still waits on. `workspace` and
 // `copy` are what that agent runs in, removed once its stop is saved. A

@@ -39,6 +39,7 @@ const yours: EventType[] = [
 // What an ended task may still record.
 const cleanup: EventType[] = [
   "session.started",
+  "session.failed",
   "session.stopping",
   "session.ended",
   "workspace.removed",
@@ -293,6 +294,12 @@ function badDelivery(
     if (copy.workspace.commit !== output.commit) return "rule 6: review checked another commit";
   } else if (state.intent === "ship" || state.intent === "answer") {
     return `rule 7: ${state.intent} was delivered from build`;
+  } else {
+    // A try delivers the commit its last merge gave.
+    const merge = log.findLast((event) => event.type === "main.merged");
+    if (merge?.type !== "main.merged" || merge.commit !== output.commit) {
+      return "rule 6: a try delivered a commit its merge didn't give";
+    }
   }
   // 8. Sign-off after the last pass, or the last handover for try.
   const merge = log.findLast((event) => event.type === "main.merged");
@@ -329,6 +336,7 @@ function replay(events: Event[]): Task | undefined {
 // - five are accepted inputs that move a task forward.
 function run(choices: number[], seen?: Set<EventType>): string | undefined {
   const world = new World(config);
+  const trail: string[] = [];
   for (let i = 0; i + 1 < choices.length; i += 2) {
     const mode = (choices[i] ?? 0) % 8;
     const pick = choices[i + 1] ?? 0;
@@ -340,10 +348,23 @@ function run(choices: number[], seen?: Set<EventType>): string | undefined {
     if (seen !== undefined && step.decision.ok) {
       for (const event of step.decision.events) seen.add(event.type);
     }
+    trail.push(describe(step));
     const problem = broken(world, step);
-    if (problem !== undefined) return `step ${i / 2}, ${input.sender} ${input.kind}: ${problem}`;
+    if (problem !== undefined) {
+      return `step ${i / 2}, ${input.sender} ${input.kind}: ${problem}\n${trail.slice(-12).join("\n")}`;
+    }
   }
   return undefined;
+}
+
+// One line per step, for the report when a rule breaks.
+function describe(step: Step): string {
+  const { input, decision } = step;
+  const { sender: _, at: __, ...body } = input;
+  const result = decision.ok
+    ? `${decision.events.map((e) => e.type).join(" ")} | ${decision.commands.map((c) => c.kind).join(" ")}`
+    : `refused: ${decision.reason}`;
+  return `  ${JSON.stringify(body)} -> ${result}`;
 }
 
 function poolFor(world: World, mode: number, all: Input[]): Input[] {
@@ -372,15 +393,15 @@ test("every rule holds after every step of random runs", () => {
       const problem = run(choices);
       if (problem !== undefined) throw new Error(problem);
     }),
-    { numRuns: 300 },
+    { numRuns: 300, includeErrorInReport: true },
   );
-});
+}, 120_000);
 
 test("random runs reach every event built so far", () => {
   const seen = new Set<EventType>();
   fc.assert(
     fc.property(runs, (choices) => run(choices, seen) === undefined),
-    { numRuns: 200, seed: 42 },
+    { numRuns: 600, seed: 42 },
   );
   const reached: EventType[] = [
     "task.received",
@@ -413,6 +434,10 @@ test("random runs reach every event built so far", () => {
     "output.requested",
     "output.delivered",
     "output.failed",
+    "task.paused",
+    "task.resumed",
+    "task.killed",
+    "task.failed",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
-});
+}, 120_000);

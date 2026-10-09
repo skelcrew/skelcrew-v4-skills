@@ -8,6 +8,7 @@ import { builderCall, merged } from "./build";
 import { approve, delivered, deny } from "./delivery";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
+import { crashed, endedStart, giveUp, kill, letGo, lift, pause } from "./holds";
 import { decideProposals } from "./proposals";
 import { testerCall } from "./review";
 import { stopped } from "./stop";
@@ -74,15 +75,14 @@ function judgeEnded(draft: Draft, state: EndedState, input: Input): string | und
         stopped(draft, input);
         return undefined;
       }
-      // The stop in flight will answer for this session.
-      if (input.kind === "session_ended" && stoppingSession(draft.task) === input.session) {
-        return undefined;
-      }
-      return input.kind === "session_started" ||
+      if (
+        input.kind === "session_started" ||
         input.kind === "session_failed" ||
         input.kind === "session_ended"
-        ? "not built yet"
-        : ended;
+      ) {
+        return endedStart(draft, input);
+      }
+      return ended;
     case "daemon":
       return input.kind === "usage" ? "not built yet" : ended;
     case "you":
@@ -114,6 +114,14 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
     case "approve_proposals":
     case "deny_proposals":
       return `task ${draft.task.id} has no proposals until it ends`;
+    case "pause":
+      return pause(draft, state);
+    case "resume":
+      return lift(draft, state, "resume");
+    case "retry":
+      return lift(draft, state, "retry");
+    case "kill":
+      return kill(draft, state);
     case "approve":
       return approve(draft, state);
     case "deny":
@@ -124,6 +132,7 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
 }
 
 function fromAgent(draft: Draft, state: ActiveState, input: AgentInput): string | undefined {
+  if (input.kind === "give_up") return giveUp(draft, input.session, input.reason);
   switch (state.phase) {
     case "triage":
       return triageCall(draft, state, input);
@@ -162,6 +171,10 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
       return undefined;
     case "session_started":
       draft.record({ type: "session.started", session: input.request, harnessId: input.harnessId });
+      // A held task has no agent at work, so a session that starts now stops.
+      if (draft.task.state.phase !== "ended" && draft.task.state.hold !== undefined) {
+        letGo(draft, input.request, "stopped");
+      }
       return undefined;
     case "session_failed":
       draft.record({ type: "session.failed", request: input.request, error: input.error });
@@ -185,7 +198,8 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
     case "session_ended":
       // The stop in flight will answer for this session.
       if (stoppingSession(draft.task) === input.session) return undefined;
-      return "not built yet";
+      crashed(draft, input);
+      return undefined;
     default:
       return "not built yet";
   }

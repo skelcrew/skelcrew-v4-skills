@@ -48,6 +48,10 @@ export class World {
   // Every reply a tool could give, in the order offered.
   readonly replies: Reply[] = [];
   private readonly stopsSent = new Set<string>();
+  // The outcome each request got, by `task:group:number`. A tool may repeat
+  // an outcome, but never contradicts it: a start that failed never also
+  // starts.
+  private readonly outcomes = new Map<string, string>();
   private readonly gone = new Set<string>();
   private moment = 0;
 
@@ -56,6 +60,14 @@ export class World {
   now(): number {
     this.moment += 1_000;
     return this.moment;
+  }
+
+  // Whether a reply fits the outcome its request already got.
+  fits(task: TaskId, body: ReplyBody): boolean {
+    const key = outcomeKey(task, body);
+    if (key === undefined) return true;
+    const outcome = this.outcomes.get(key);
+    return outcome === undefined || outcome === outcomeOf(body);
   }
 
   // What decide would say, without playing it.
@@ -100,6 +112,8 @@ export class World {
   // once its work is done, so the world changes when the reply is given.
   private observe(input: Input): void {
     if (input.sender !== "plugin") return;
+    const key = outcomeKey(input.task, input);
+    if (key !== undefined && !this.outcomes.has(key)) this.outcomes.set(key, outcomeOf(input));
     switch (input.kind) {
       case "workspace_created":
         this.workspaces.set(input.path, input.task);
@@ -196,4 +210,33 @@ export class World {
   private offer(task: TaskId, body: ReplyBody): void {
     this.replies.push({ task, body });
   }
+}
+
+// Replies that answer the same request, grouped, so each request gets one
+// outcome. A crash report is not an outcome of the start: a session can
+// start and then crash.
+function outcomeKey(task: TaskId, body: ReplyBody): string | undefined {
+  switch (body.kind) {
+    case "workspace_created":
+    case "workspace_failed":
+      return `${task}:workspace:${body.request}`;
+    case "session_started":
+    case "session_failed":
+      return `${task}:start:${body.request}`;
+    case "session_stopped":
+      return `${task}:stop:${body.session}`;
+    case "main_merged":
+    case "main_conflict":
+    case "main_failed":
+      return `${task}:merge:${body.request}`;
+    case "output_delivered":
+    case "output_failed":
+      return `${task}:output:${body.request}`;
+    default:
+      return undefined;
+  }
+}
+
+function outcomeOf(body: ReplyBody): string {
+  return body.kind === "session_stopped" ? `stopped:${body.save}` : body.kind;
 }

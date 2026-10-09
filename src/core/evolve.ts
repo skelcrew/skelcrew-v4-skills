@@ -59,8 +59,39 @@ function ended(task: Task, state: EndedState, event: Event): Evolved {
       if (state.agent?.kind !== "stopping" || state.agent.session !== event.session) {
         return misfit(event, "that session isn't being stopped");
       }
+      const { agent, ...rest } = state;
+      return ok({ ...task, state: agent.save ? savedIn(rest, event.save) : rest });
+    }
+    case "session.started": {
+      if (state.agent?.kind !== "starting" || state.agent.request !== event.session) {
+        return misfit(event, "the task isn't starting that session");
+      }
+      const record = {
+        session: event.session,
+        role: state.agent.role,
+        harnessId: event.harnessId,
+        usage: noUsage,
+      };
+      return ok({ ...task, sessions: [...task.sessions, record] });
+    }
+    case "session.stopping": {
+      if (state.agent?.kind !== "starting" || state.agent.request !== event.session) {
+        return misfit(event, "the task isn't starting that session");
+      }
+      const agent: Leftover = {
+        kind: "stopping",
+        session: event.session,
+        reason: event.reason,
+        save: event.save,
+      };
+      return ok({ ...task, state: { ...state, agent } });
+    }
+    case "session.failed": {
+      if (state.agent?.kind !== "starting" || state.agent.request !== event.request) {
+        return misfit(event, "the task isn't starting that session");
+      }
       const { agent: _, ...rest } = state;
-      return ok({ ...task, state: savedIn(rest, event.save) });
+      return ok({ ...task, state: rest });
     }
     case "workspace.removed": {
       const { workspace, copy, ...rest } = state;
@@ -96,11 +127,13 @@ function ended(task: Task, state: EndedState, event: Event): Evolved {
 // itself if it is starting or stopping, so the cleanup can finish.
 function end(task: Task, state: ActiveState, outcome: Outcome, proposals: Proposal[]): Evolved {
   const step = state.step;
+  const role = phaseRole(task);
+  const save = state.phase === "build" && state.intent !== "answer";
   const agent: Leftover | undefined =
-    step.kind === "starting"
-      ? { kind: "starting", request: step.request }
+    step.kind === "starting" && role !== undefined
+      ? { kind: "starting", request: step.request, role, save }
       : step.kind === "stopping"
-        ? { kind: "stopping", session: step.session, reason: step.reason }
+        ? { kind: "stopping", session: step.session, reason: step.reason, save: step.save }
         : undefined;
   const copy = "copy" in step ? step.copy : undefined;
   return ok({
@@ -168,19 +201,27 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
     }
 
     case "session.stopping": {
-      if (step.kind !== "running" || step.session !== event.session) {
-        return misfit(event, "that session isn't running");
-      }
+      const live =
+        (step.kind === "running" && step.session === event.session) ||
+        (step.kind === "starting" && step.request === event.session);
+      if (!live) return misfit(event, "that session isn't running or starting");
       // The agent is let go, so its question and your attachment go too.
       const { question: _, ...rest } = state;
-      const stopping: Stopping = { kind: "stopping", session: event.session, reason: event.reason };
+      const stopping: Stopping = {
+        kind: "stopping",
+        session: event.session,
+        reason: event.reason,
+        save: event.save,
+      };
       switch (rest.phase) {
         case "triage":
           return ok({ ...task, state: { ...rest, attached: false, step: stopping } });
         case "build":
           return ok({ ...task, state: { ...rest, attached: false, step: stopping } });
         case "review":
-          if (rest.step.kind !== "running") return misfit(event, "unreachable");
+          if (rest.step.kind !== "running" && rest.step.kind !== "starting") {
+            return misfit(event, "unreachable");
+          }
           return ok({
             ...task,
             state: { ...rest, attached: false, step: { ...stopping, copy: rest.step.copy } },
@@ -211,7 +252,10 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         case "triage":
           return ok({
             ...task,
-            state: { ...savedIn(state, event.save), step: { kind: "queued" } },
+            state: {
+              ...savedIn(state, step.kind === "stopping" && step.save ? event.save : undefined),
+              step: { kind: "queued" },
+            },
           });
         case "build": {
           const handover =
@@ -220,7 +264,10 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
               : {};
           return ok({
             ...task,
-            state: { ...savedIn(state, event.save), step: { kind: "queued", ...handover } },
+            state: {
+              ...savedIn(state, step.kind === "stopping" && step.save ? event.save : undefined),
+              step: { kind: "queued", ...handover },
+            },
           });
         }
         case "review":
@@ -384,6 +431,23 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         },
       });
 
+    case "task.paused":
+      if (state.hold !== undefined) return misfit(event, "the task is already held");
+      return ok({ ...task, state: { ...state, hold: { kind: "paused" } } });
+
+    case "task.resumed": {
+      const { hold, ...rest } = state;
+      if (hold === undefined) return misfit(event, "the task isn't held");
+      if (event.via === "resume" && hold.kind !== "paused") return misfit(event, "it isn't paused");
+      return ok({ ...task, state: { ...rest, lifted: hold } });
+    }
+
+    case "task.killed":
+      return end(task, state, { kind: "killed" }, []);
+
+    case "task.failed":
+      return end(task, state, { kind: "failed" }, []);
+
     case "task.held":
       return ok({ ...task, state: { ...state, hold: event.hold } });
 
@@ -500,8 +564,8 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
 
 // Records how a save in the task's workspace went. A failed save marks
 // it unsaved, and the next save that works clears the mark.
-function savedIn<S extends { workspace?: Workspace }>(state: S, save: SaveResult): S {
-  if (state.workspace === undefined) return state;
+function savedIn<S extends { workspace?: Workspace }>(state: S, save: SaveResult | undefined): S {
+  if (state.workspace === undefined || save === undefined) return state;
   return { ...state, workspace: { ...state.workspace, unsaved: save === "failed" } };
 }
 

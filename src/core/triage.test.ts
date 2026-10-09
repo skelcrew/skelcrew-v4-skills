@@ -170,6 +170,7 @@ describe("the planner proceeds", () => {
       kind: "stopping",
       session: 2,
       reason: "reported",
+      save: true,
       proceed: {
         intent: "ship",
         rigor: "full",
@@ -279,7 +280,7 @@ describe("the planner splits or declines", () => {
       phase: "ended",
       outcome: { kind: "split" },
       proposals: proposals.map((p) => ({ ...p, decision: "pending" })),
-      agent: { kind: "stopping", session: 2, reason: "reported" },
+      agent: { kind: "stopping", session: 2, reason: "reported", save: false },
       workspace: { request: 1, path: "/w/t1", branch: "skel/t1-fix-export", unsaved: false },
     });
   });
@@ -334,15 +335,12 @@ describe("the planner splits or declines", () => {
     ]);
   });
 
-  test("if the save fails, the workspace is kept for good", () => {
-    const run = more(planning(), [
-      split(),
-      plugin({ kind: "session_stopped", session: 2, save: "failed" }),
+  test("the planner's stop doesn't save, so a reported failed save removes the workspace anyway", () => {
+    const run = more(planning(), [split()]);
+    const after = more(run, [plugin({ kind: "session_stopped", session: 2, save: "failed" })]);
+    expect(after.commands).toEqual([
+      { kind: "remove_workspace", task: "t1", path: "/w/t1", deleteBranch: "skel/t1-fix-export" },
     ]);
-    expect(run.commands.filter((c) => c.kind === "remove_workspace")).toEqual([]);
-    const state = taskOf(run).state;
-    expect(state.phase === "ended" && state.agent).toBeUndefined();
-    expect(state.phase === "ended" && state.workspace?.unsaved).toBe(true);
   });
 
   test("an ended task still refuses anything else", () => {

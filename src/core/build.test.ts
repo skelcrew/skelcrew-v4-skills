@@ -77,6 +77,7 @@ describe("while the builder works", () => {
       kind: "stopping",
       session: 2,
       reason: "reported",
+      save: true,
       handover: {
         intent: "ship",
         commit: "c1",

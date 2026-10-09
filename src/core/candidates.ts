@@ -112,10 +112,13 @@ export function candidates(world: World): Input[] {
     for (const account of ["me", "stranger"]) {
       inputs.push({ sender: "plugin", task, ...stamp, kind: "tracker_reply", account, text: "Ok" });
     }
-    // Agents: every session the task ever asked for, in every role, so
-    // old sessions and wrong roles come up too.
-    for (const command of world.sent) {
-      if (command.kind !== "start_session" || command.task !== task) continue;
+    // Agents: the last two sessions the task asked for, in every role, so
+    // an old session and wrong roles come up too.
+    const sessions = world.sent
+      .filter((command) => command.kind === "start_session" && command.task === task)
+      .slice(-2);
+    for (const command of sessions) {
+      if (command.kind !== "start_session") continue;
       for (const role of ["planner", "builder", "tester"] satisfies Role[]) {
         for (const body of agentInputs(command.request, role)) {
           inputs.push({ ...body, sender: "agent", task, ...stamp });
@@ -124,6 +127,7 @@ export function candidates(world: World): Input[] {
     }
   }
   for (const reply of world.replies) {
+    if (!world.fits(reply.task, reply.body)) continue;
     inputs.push({ ...reply.body, sender: "plugin", task: reply.task, ...stamp });
   }
   return inputs;
