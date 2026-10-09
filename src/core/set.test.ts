@@ -291,3 +291,47 @@ describe("found by the property tests", () => {
     expect(run.commands.map((c) => c.kind)).toEqual(["deliver_output"]);
   });
 });
+
+describe("found in review of set", () => {
+  test("a tester isn't started on stale work after a failed start and a retry", () => {
+    const failed = more(merging(), [
+      plugin({ kind: "main_merged", request: 3, commit: "m3", files: ["src/x.ts"] }),
+      plugin({ kind: "workspace_created", request: 4, path: "/w/copy" }),
+      you({ kind: "set", intent: "answer" }),
+      plugin({ kind: "session_failed", request: 5, error: "no tmux" }),
+    ]);
+    const run = more(failed, [you({ kind: "retry" }), daemon({ kind: "start" })]);
+    expect(startsOf(run)).toEqual([
+      expect.objectContaining({ role: "builder", intent: "answer", edits: false }),
+    ]);
+    expect(phaseOf(run)).toBe("build");
+  });
+
+  test("your light rigor drops the planner's spec, since a light task gets none", () => {
+    const run = more(triage(), [
+      you({ kind: "set", rigor: "light" }),
+      daemon({ kind: "start" }),
+      plugin({ kind: "workspace_created", request: 1, path: "/w/t1" }),
+      plugin({ kind: "session_started", request: 2, harnessId: "h2" }),
+      agent({
+        session: 2,
+        role: "planner",
+        kind: "proceed",
+        intent: "ship",
+        rigor: "full",
+        approve: false,
+        brief: "b",
+        spec: { path: "docs/plans/x.md", text: "# Plan" },
+      }),
+    ]);
+    expect(run.commands.at(-1)).toEqual({
+      kind: "stop_session",
+      task: "t1",
+      session: 2,
+      save: false,
+    });
+    const done = more(run, [stopped(2, "nothing")]);
+    const state = taskOf(done).state;
+    expect(state.phase === "build" && [state.rigor, state.spec]).toEqual(["light", undefined]);
+  });
+});

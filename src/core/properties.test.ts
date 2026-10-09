@@ -152,6 +152,34 @@ function broken(world: World, step: Step): string | undefined {
     }
   }
 
+  // 7. Stale work is never merged, reviewed or delivered: work made for one
+  // intent never goes on once you change the task's intent.
+  const live = after?.state;
+  if (live !== undefined && live.phase !== "ended" && live.phase !== "triage") {
+    for (const command of commands) {
+      if (command.kind === "start_session" && command.role === "tester") {
+        if (live.phase !== "review" || live.handover.intent !== live.intent) {
+          return "rule 7: a tester started on work made for another intent";
+        }
+      }
+      if (command.kind === "merge_main") {
+        const step = live.step;
+        if (step.kind !== "merging" || step.handover.intent !== live.intent) {
+          return "rule 7: work made for another intent was merged";
+        }
+      }
+      if (command.kind === "deliver_output") {
+        const output = command.output;
+        const fits =
+          live.intent === "answer"
+            ? output.kind === "report"
+            : output.kind === "branch" && output.mergeable === (live.intent === "ship");
+        if (!fits)
+          return `rule 7: a ${output.kind} was delivered, but the intent is ${live.intent}`;
+      }
+    }
+  }
+
   // 9. Intent sets hard limits.
   for (const command of commands) {
     if (command.kind !== "start_session" || !command.edits) continue;

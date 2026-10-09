@@ -14,14 +14,16 @@ export function triageCall(
     case "proceed": {
       if (input.brief.trim() === "") return "the brief is empty";
       if (input.rigor === "light" && input.spec !== undefined) return "a light task gets no spec";
+      // Your rigor wins. A task that ends up light gets no spec.
+      const spec = (state.overrides.rigor ?? input.rigor) === "full" ? input.spec : undefined;
       const call = {
         intent: input.intent,
         rigor: input.rigor,
         approve: input.approve,
         brief: input.brief,
-        ...(input.spec === undefined ? {} : { spec: input.spec }),
+        ...(spec === undefined ? {} : { spec }),
       };
-      stopAgent(draft, input.session, "reported", input.spec !== undefined, input.spec);
+      stopAgent(draft, input.session, "reported", spec !== undefined, spec);
       draft.record({ type: "task.triaged", outcome: { kind: "proceed", ...call } });
       return undefined;
     }

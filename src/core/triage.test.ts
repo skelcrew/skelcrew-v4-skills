@@ -418,7 +418,7 @@ describe("found in review of triage", () => {
     expect(state.phase === "build" && state.workspace?.unsaved).toBe(true);
   });
 
-  test("your rigor wins over the planner's, and the planner's spec is kept", () => {
+  test("your rigor wins over the planner's, and a task that ends up light gets no spec", () => {
     const run = play([
       you({ kind: "add", title: "Fix export", description: "", rigor: "light" }),
       daemon({ kind: "start" }),
@@ -428,7 +428,7 @@ describe("found in review of triage", () => {
       plugin({ kind: "session_stopped", session: 2, save: "saved" }),
     ]);
     const state = taskOf(run).state;
-    expect(state.phase === "build" && [state.rigor, state.spec]).toEqual(["light", spec]);
+    expect(state.phase === "build" && [state.rigor, state.spec]).toEqual(["light", undefined]);
   });
 
   test("after a split, the planner's own session end changes nothing", () => {

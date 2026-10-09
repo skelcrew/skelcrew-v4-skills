@@ -17,6 +17,9 @@ import type {
 } from "./types";
 
 export function advance(draft: Draft): void {
+  if (draft.task.state.phase !== "ended" && draft.task.state.hold === undefined) {
+    applyChanges(draft);
+  }
   const state = draft.task.state;
   if (state.phase === "ended" || state.hold !== undefined || state.step.kind !== "queued") return;
   switch (state.phase) {
@@ -201,20 +204,25 @@ export function backToBuild(
   });
 }
 
-// A step in flight has settled, and the task still holds its slot. A
-// change you made meanwhile applies now, then the task moves on.
+// A step in flight has settled, and the task still holds its slot. It
+// moves on as any resting task does.
 export function settled(draft: Draft): void {
-  const state = draft.task.state;
-  if (state.phase !== "ended" && state.step.kind === "queued") {
-    if (triageSkipped(state)) {
-      buildFromOverrides(draft);
-    } else if (state.phase === "review" && isStale(state)) {
-      if (state.step.copy !== undefined) dropCopy(draft, state.step.copy);
-      const now = draft.task.state;
-      if (now.phase === "review") backToBuild(draft, now);
-    }
-  }
   advance(draft);
+}
+
+// A change you made while the task rested or waited applies before it
+// moves on: your intent and rigor end triage, and stale review work goes
+// back to build. Every path that moves a resting task comes through here.
+function applyChanges(draft: Draft): void {
+  const state = draft.task.state;
+  if (state.phase === "ended" || state.step.kind !== "queued") return;
+  if (triageSkipped(state)) {
+    buildFromOverrides(draft);
+  } else if (state.phase === "review" && isStale(state)) {
+    if (state.step.copy !== undefined) dropCopy(draft, state.step.copy);
+    const now = draft.task.state;
+    if (now.phase === "review") backToBuild(draft, now);
+  }
 }
 
 function dropCopy(draft: Draft, copy: Copy): void {

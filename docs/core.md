@@ -546,9 +546,10 @@ role doesn't work in triage, so the general rules refuse them.
 
 - **Your overrides win over the planner's call, field by field.** Build starts with your
   intent, rigor and approval where you gave them, and the planner's otherwise.
-- **A spec is refused only when the planner itself calls `light`.** If you set `light` and the
-  planner calls `full` with a spec, the spec is kept, since it is already written. The spec
-  says a `light` task never gets one. That rule is about the planner's own call.
+- **A spec is refused when the planner itself calls `light`.** If you set `light` and the
+  planner calls `full` with a spec, the spec is dropped: it isn't committed, and build
+  doesn't get it. The spec says a `light` task never gets one. (Changed after review of
+  part 9. It first kept the spec.)
 - **The planner's stop saves only to commit the spec.** The planner has no edit permission,
   so there is nothing else to save. A split or decline stops it without saving.
 - **The task ends as split or declined at once**, while the planner is still stopping. The
