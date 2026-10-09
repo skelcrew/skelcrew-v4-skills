@@ -348,6 +348,9 @@ plugin or the daemon.
 - **A task source can't set intent, rigor or approval.** Only `add` from you can. Setting
   approval from a tracker label waits for the GitHub plugin.
 - **The planner's spec arrives with its path**, chosen by the daemon, and its text.
+- **Handing over on detach is only for `ship` and `try`.** The handed-over work is then a
+  summary saying you handed it over. An `answer` needs the builder's report, and the core
+  can't make one up, so handing it over is refused. Detach with resume instead.
 
 **Events**
 
@@ -367,11 +370,13 @@ spec's list has none for them:
 - **`phase.started` is only for build and review.** `task.received` puts a task in triage.
   When triage is skipped, `phase.started` for build follows at once.
 - **`task.resumed` covers both resume and retry**, with which one it was.
-- **A crash is recorded as a hold, not as `session.ended`.** A crashed session's pane stays
-  open, so it still needs a stop, and its uncommitted work still needs saving. The task is
-  held as crashed, and the stop goes out. The stop's reply then records `session.ended` as
-  stopped. So `session.ended` never carries the reasons `crashed` or `reported`. Every
-  report is followed by a stop, so `reported` would never be the reason either.
+- **A crash holds the task, and its session still gets a stop.** A crashed session's pane
+  stays open, and its uncommitted work still needs saving. So the task is held as crashed,
+  and a stop goes out. `session.ended` is recorded when the stop is confirmed. Its reason
+  is the one the stop was sent for: `reported` after an agent's report, `stopped` when
+  Skelcrew let it go, `crashed` after a crash. It always says how the save went.
+- **A crash's exit code is optional.** A session lost while no daemon ran has none, and the
+  core never makes one up.
 
 **Commands**
 

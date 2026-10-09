@@ -62,7 +62,8 @@ export type Handback =
 
 export type Hold =
   | { kind: "paused" }
-  | { kind: "crashed"; exitCode: number; lastLine: string }
+  // A session lost while no daemon ran has no exit code.
+  | { kind: "crashed"; exitCode?: number; lastLine: string }
   | { kind: "gave_up"; reason: string }
   | { kind: "loop_cap"; findings: string }
   | { kind: "failed"; what: "workspace" | "session" | "merge" | "delivery"; error: string }
@@ -80,7 +81,12 @@ export type Queued = { kind: "queued" };
 export type CreatingWorkspace = { kind: "creating_workspace"; request: number };
 export type Starting = { kind: "starting"; request: number };
 export type Running = { kind: "running"; session: number };
-export type Stopping = { kind: "stopping"; session: number };
+// Why a session ends: its agent reported (done, a verdict, a triage call or
+// giving up), Skelcrew stopped it (pause, kill, a change of intent), or it
+// crashed. The stop saves its work in every case.
+export type EndReason = "reported" | "stopped" | "crashed";
+
+export type Stopping = { kind: "stopping"; session: number; reason: EndReason };
 export type AwaitingApproval = { kind: "awaiting_approval" };
 export type Delivering = { kind: "delivering"; request: number };
 // Ready to deliver, but held: the delivery failed, or the task was held
@@ -201,7 +207,7 @@ export type ProposalState = Proposal & { decision: "pending" | "approved" | "den
 // is stopped once it answers, or a stop not yet confirmed.
 export type Leftover =
   | { kind: "starting"; request: number }
-  | { kind: "stopping"; session: number };
+  | { kind: "stopping"; session: number; reason: EndReason };
 
 // An ended task. `agent` is the agent it still waits on. `workspace` and
 // `copy` are what that agent runs in, removed once its stop is saved. A
@@ -276,7 +282,7 @@ export type PluginInput = Envelope & { sender: "plugin" } & (
     | { kind: "workspace_failed"; request: number; error: string }
     | { kind: "session_started"; request: number; harnessId: string }
     | { kind: "session_failed"; request: number; error: string }
-    | { kind: "session_ended"; session: number; exitCode: number; lastLine: string }
+    | { kind: "session_ended"; session: number; exitCode?: number; lastLine: string }
     | { kind: "session_stopped"; session: number; save: SaveResult }
     | { kind: "main_merged"; request: number; commit: string; files: string[] }
     | { kind: "main_conflict"; request: number }
@@ -330,8 +336,8 @@ export type Event = Stamp &
     | { type: "session.requested"; request: number; role: Role; edits: boolean }
     | { type: "session.started"; session: number; harnessId: string }
     | { type: "session.failed"; request: number; error: string }
-    | { type: "session.stopping"; session: number; save: boolean }
-    | { type: "session.ended"; session: number; reason: "stopped"; save: SaveResult }
+    | { type: "session.stopping"; session: number; save: boolean; reason: EndReason }
+    | { type: "session.ended"; session: number; reason: EndReason; save: SaveResult }
     | { type: "question.asked"; session: number; text: string; options: string[] }
     | { type: "question.answered"; answer: Answer }
     | { type: "answer.delivered" }
