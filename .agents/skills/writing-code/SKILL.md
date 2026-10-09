@@ -29,7 +29,9 @@ Build one slice at a time. A slice is one behaviour you can name in a sentence, 
 4. **Write the smallest code that passes.** Don't build ahead for the next slice.
 
 5. **Tidy while green.** Remove repetition, rename for clarity, and make the main function
-   read as an outline. Run the tests after each change.
+   read as an outline. Delete scaffolding: placeholder defaults, branches that can't run,
+   and helpers that only exist to satisfy the type checker. Where a reader would ask why,
+   say why in a comment. Run the tests after each change.
 
 6. **Ask what else this cell could see.** For the state and input you just handled: what
    if the input comes twice, late, out of order, from the wrong sender, or after the end?

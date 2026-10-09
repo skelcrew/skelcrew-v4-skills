@@ -14,6 +14,9 @@ hand the review to a subagent that hasn't seen the work. Give it the spec, the i
 the code and this skill, and none of your reasoning. It reports findings and never edits a
 file.
 
+Wait for the review to finish before you start the next part or report done. A review left
+running in the background is lost when your session ends, and so are its findings.
+
 ## Steps
 
 1. **Spec to code.** Go through the spec for this part rule by rule. For each rule, find

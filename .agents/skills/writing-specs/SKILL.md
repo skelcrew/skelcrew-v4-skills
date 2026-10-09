@@ -11,7 +11,7 @@ work is finding the questions the design forgot.
 ## Steps
 
 1. **Read what exists.** Read the design docs for this part end to end. Note every term,
-   state and rule they use.
+   state and rule they use. If the docs point to code from an earlier version, read it too.
 
 2. **Write the types first.** Write down the states, the inputs, the events and the
    commands. Each state holds only the fields it needs. If two states share a field, ask

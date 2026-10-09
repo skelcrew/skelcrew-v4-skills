@@ -4,19 +4,6 @@ Skelcrew runs coding agents in parallel, always on and unattended. You make deci
 don't supervise. The design is in `docs/spec.md`. Read it before changing anything it
 covers. What earlier versions taught us is in `docs/learnings.md`.
 
-## This branch is an experiment
-
-You build the core alone, from the docs, and the human reviews the result at the end. So
-for this branch only:
-
-- The human does not approve the types, read the tests or read each diff as you go. Make
-  those calls yourself, and record each one you had to make in `docs/core.md`, under
-  "Decisions made while building the core".
-- Commit to this branch. Never push and never open a pull request.
-
-Every other rule below still holds, including test first and `bun run check` on every
-commit.
-
 ## Hard constraints
 
 These are correctness requirements, not preferences. A change that breaks one is wrong even
@@ -34,13 +21,16 @@ if a task asks for it. Stop and report the conflict instead.
 The core decides what agents may do, so it gets the closest care. The critical code is the
 reducer (`decide` and `evolve`), the scheduler, their types, and the invariants.
 
-- The types, events and invariants come first, and the human approves them. The code is
-  written against them.
-- Tests come before code, and the human reads them closely. A wrong test here is more
-  dangerous than wrong code.
-- One transition at a time. The human reads every diff before it lands.
-- An agent working alone does not change the core. Work there happens in a live session
-  with the human.
+- **The human approves decisions, not diffs.** The types, events and invariants come first,
+  and the human approves them. The code is written against them.
+- **Every change to the core goes through the skills** in `.agents/skills`: `writing-specs`,
+  then `writing-code`, then `reviewing-code`. One part at a time, tests first.
+- **A fresh agent reviews every part** before the next one starts. It has not seen the work,
+  and a finding counts only with a failing test. A part is done when its review has
+  finished and its findings are fixed.
+- **Every call the docs don't make is recorded** in `docs/core.md`, under "Decisions made
+  while building the core", in plain words. The pull request lists the new ones, and any
+  change to the types, events or invariants, so the human can approve them there.
 
 ## Code rules
 
@@ -53,6 +43,8 @@ reducer (`decide` and `evolve`), the scheduler, their types, and the invariants.
   tsconfig has `strict`, `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` on.
 - **Check every outside input** with Zod: plugin input, CLI requests, config and replies
   from outside services.
+- **Use `null` for a value that may be missing**, not an optional field. An object with
+  optional fields needs a spread for each one to build it, and the code fills up with them.
 - **Errors are values in the core.** Functions return a result that says what failed. They
   do not throw.
 
@@ -119,16 +111,20 @@ read, rewrite it.
 ## Layout
 
 - `docs/spec.md`: the design. The source of truth for what Skelcrew does.
+- `docs/ROADMAP.md`: the milestones, in order.
+- `docs/TODO.md`: the tasks for the current milestone. A new milestone is split into tasks here when it starts, and a task is ticked in the commit that finishes it.
 - `docs/core.md`: the core worked out in words: phases, steps, inputs by sender, commands.
 - `docs/invariants.md`: the rules the core must never break. Tests are written against it.
 - `docs/learnings.md`: what v3 taught us, and code worth reusing from it.
 - `docs/ARCHITECTURE.md`: a short guide to reading the code: the main parts, how an input
   flows through them, and where to start.
 - `src/core/`: the core. Critical code, see above.
+- `.agents/skills/`: how to write a spec, write code and review it. Every core change uses them. `.claude` links here.
 - `src/checks/run-tests.ts`: the test watchdog.
 - `CLAUDE.md` links to this file, so every agent reads the same rules.
 
 The saved events fixture joins this list when the store exists, see Saved events below.
+
 
 **Keep `docs/ARCHITECTURE.md` short.** It is an overview, not a catalogue. It names the main
 parts and how they fit, never single files, functions or features, so most changes leave it
