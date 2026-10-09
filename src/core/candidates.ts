@@ -21,6 +21,8 @@ function you(task: TaskId): Body<YouInput>[] {
     { kind: "add", title: `Task ${task}`, description: "Do it", intent: "try", rigor: "full" },
     { kind: "add", title: `Task ${task}`, description: "", intent: "answer", rigor: "full" },
     { kind: "add", title: `Task ${task}`, description: "", approve: true },
+    { kind: "add", title: `Task ${task}`, description: "", intent: "answer" },
+    { kind: "add", title: `Task ${task}`, description: "", rigor: "light" },
     { kind: "set", intent: "answer" },
     { kind: "set", intent: "ship", rigor: "full" },
     { kind: "set", approve: true },
@@ -131,9 +133,7 @@ export function candidates(world: World): Input[] {
 // or they would crowd out progress.
 export function isBackward(input: Input): boolean {
   if (input.sender === "you") {
-    return ["pause", "kill", "set", "deny", "detach", "attach", "deny_proposals"].includes(
-      input.kind,
-    );
+    return ["pause", "kill", "set", "deny", "detach", "attach"].includes(input.kind);
   }
   if (input.sender === "agent") return ["give_up", "decline", "split"].includes(input.kind);
   if (input.sender === "plugin") {

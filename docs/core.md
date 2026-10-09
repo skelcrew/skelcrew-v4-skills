@@ -558,3 +558,106 @@ role doesn't work in triage, so the general rules refuse them.
 - **An empty proceed brief is refused.** The spec says the brief is always there.
 
 **Stories this part reaches:** story 5, a split.
+
+### Part 3: build
+
+**Starting build.** The scheduler's start reaches a queued build task that isn't held.
+
+- With no workspace, the task's workspace is requested, as in triage.
+- With handed-over work waiting, main is merged next: `main.requested` and a merge main
+  command in the workspace. This happens after a hold, when the merge couldn't go first.
+- Otherwise the builder is requested. It gets the brief, the spec, the intent and rigor,
+  what the last round handed back, and why it is back after a hold. It may edit unless the
+  task is an `answer`.
+
+**The table.**
+
+| Step | Input | Result |
+|---|---|---|
+| queued | start | as above |
+| creating workspace | workspace created | `workspace.created`, then the builder is requested |
+| creating workspace | workspace failed | `workspace.failed`, then held as a failed workspace |
+| starting | session started | `session.started`, the step is running |
+| starting | session failed | `session.failed`, then held as a failed session |
+| running | progress | `progress.reported`. Nothing else changes. |
+| running | done | refused with an open question, or when the work doesn't fit the intent: a summary for `ship` and `try`, a report for `answer`. Otherwise `session.stopping` (reported) and `build.done` with the handed-over work. A stop that saves, except for `answer`. |
+| stopping | session stopped | `session.ended`. With handed-over work: an `answer` moves to review with `phase.started`, using the handed-over commit and files. `ship` and `try` merge main. A failed save holds the task first (part 6). Held, the task waits with its handed-over work. |
+| stopping | session ended | accepted, nothing happens |
+| merging | main merged | `main.merged`. `ship` moves to review with `phase.started`, using the merged commit and files. `try` goes to approval or delivery (part 5). |
+| merging | main conflict | `main.conflict`: the loop count goes up and the handed-over work is dropped. Under the cap, the builder is requested, told about the conflict. At the cap, held at the loop cap. |
+| merging | main failed | `main.failed`, then held as a failed merge. The handed-over work is kept, so a retry merges again. |
+| any | pause, resume, retry, kill, give up, a crash | part 6 |
+| any | attach, detach | part 7 |
+| any | ask, reply, deliver answer | part 8 |
+| any | set | part 9 |
+| any | start now, usage | part 10 |
+| any | other replies | late |
+
+**Decisions**
+
+- **`phase.started` for review carries the handed-over work and the reviewed commit.** Review
+  takes the plan and workspace from build. Everything else it needs is in the event, so
+  replay never has to look back.
+- **The reviewed commit includes what the stop saved.** The handed-over commit is fixed when
+  the builder runs `done`. The stop that follows may commit leftovers. Merging main then
+  merges the branch as it stands, and the merged commit is what review, approval and
+  delivery all use. For `answer`, nothing is merged or saved, so the handed-over commit is
+  the reviewed one.
+- **An `answer` builder's stop doesn't save.** It had no edit permission, so there is
+  nothing to commit.
+- **`done` with work that doesn't fit the intent is refused.** A `ship` or `try` hands over a
+  summary, and an `answer` hands over a report. Otherwise the delivery would have nothing
+  to hand over.
+- **A conflict at the loop cap holds the task.** The hold says the loops ran out, with
+  "merging main conflicted" as the findings.
+- **Progress changes no state.** It is kept in the log for you to read.
+
+**Stories this part reaches:** story 7, a conflict.
+
+### Part 4: review
+
+**Starting review.** Review starts as soon as `phase.started` puts the task there, since it
+keeps its slot. A queued review task that isn't held asks for what comes next:
+
+- With no tester's copy, the copy is requested at the reviewed commit: `workspace.requested`
+  and a create workspace command for a copy.
+- With a copy, the tester is requested. It gets the brief, the spec, the intent and rigor,
+  the reviewed commit and the handed-over summary or report. It can't edit.
+
+**The table.**
+
+| Step | Input | Result |
+|---|---|---|
+| queued | start | as above |
+| creating workspace | workspace created | `workspace.created` gives the copy, then the tester is requested |
+| creating workspace | workspace failed | `workspace.failed`, then held as a failed workspace |
+| starting | session started | `session.started`, the step is running |
+| starting | session failed | `session.failed`, then held as a failed session |
+| running | pass | refused with an open question or no evidence. Otherwise `session.stopping` (reported) and `review.passed`. A stop that doesn't save. |
+| running | changes | refused with an open question or no findings. Otherwise `session.stopping` (reported) and `review.changes_requested`. A stop that doesn't save. |
+| stopping | session stopped | `session.ended`, then `workspace.removed` and a remove command for the copy. After a pass: approval or delivery (part 5). After changes: the loop count goes up, and `phase.started` moves the task back to build, with the findings for the next builder. Under the cap, the builder is requested. At the cap, the task is held at the loop cap with the findings. |
+| stopping | session ended | accepted, nothing happens |
+| any | pause, resume, retry, kill, give up, a crash | part 6 |
+| any | attach, detach | part 7 |
+| any | ask, reply, deliver answer | part 8 |
+| any | set | part 9 |
+| any | start now, usage | part 10 |
+| any | other replies | late |
+
+**Decisions**
+
+- **The copy goes whenever the tester stops**, whatever the reason. A later tester gets a
+  fresh copy at the same reviewed commit. Keeping an old copy would save a little time and
+  add a state.
+- **`phase.started` for build carries everything build needs**, wherever it comes from:
+  the plan, the loop count, the workspace and what to hand back. Evolve never copies these
+  from the phase before.
+- **A pass needs evidence and changes need findings.** An empty one is refused, since the
+  spec says the verdict comes with them.
+- **At the cap, the task is held in build with the findings to hand back.** A retry then
+  starts a builder with them, and the loop count stays where it is. The next request for
+  changes holds the task again.
+- **The loop count goes up when changes are requested**, as the build phase starts. A
+  conflict also counts, as part 3 says. A denial doesn't.
+
+**Stories this part reaches:** story 1 up to the pass, story 2's changes, and story 8.

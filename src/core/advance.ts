@@ -3,7 +3,7 @@
 
 import type { Draft } from "./draft";
 import { branchName, plainBrief } from "./task";
-import type { BuildState, Role, Workspace, WorkspaceRequest } from "./types";
+import type { BuildState, Handover, Role, Workspace, WorkspaceRequest } from "./types";
 
 export function advance(draft: Draft): void {
   const state = draft.task.state;
@@ -19,6 +19,8 @@ export function advance(draft: Draft): void {
     case "build":
       if (state.workspace === undefined) {
         requestWorkspace(draft, { kind: "task", branch: branchName(draft.task) });
+      } else if (state.step.kind === "queued" && state.step.handover !== undefined) {
+        handOn(draft, state.step.handover, state.workspace);
       } else {
         requestBuilder(draft, state, state.workspace);
       }
@@ -71,4 +73,18 @@ function requestPlanner(draft: Draft, workspace: Workspace): void {
 
 function recordSession(draft: Draft, request: number, role: Role, edits: boolean): void {
   draft.record({ type: "session.requested", request, role, edits });
+}
+
+// Handed-over work moves on: an answer goes straight to review on the
+// handed-over commit, and the rest merge main first.
+function handOn(draft: Draft, handover: Handover, workspace: Workspace): void {
+  if (handover.intent === "answer") {
+    const reviewed = { commit: handover.commit, files: handover.files };
+    draft.record({ type: "phase.started", phase: "review", handover, reviewed });
+    advance(draft);
+    return;
+  }
+  const request = draft.nextRequest();
+  draft.record({ type: "main.requested", request });
+  draft.send({ kind: "merge_main", task: draft.task.id, request, path: workspace.path });
 }

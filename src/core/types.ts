@@ -328,7 +328,7 @@ export type Event = Stamp &
     | { type: "task.triaged"; outcome: TriageOutcome }
     | ({ type: "task.set" } & Settings)
     | ({ type: "phase.started" } & BuildStart)
-    | { type: "phase.started"; phase: "review"; reviewed: Reviewed }
+    | { type: "phase.started"; phase: "review"; handover: Handover; reviewed: Reviewed }
     | { type: "workspace.requested"; request: number; workspace: WorkspaceRequest }
     | { type: "workspace.created"; request: number; path: string }
     | { type: "workspace.failed"; request: number; error: string }

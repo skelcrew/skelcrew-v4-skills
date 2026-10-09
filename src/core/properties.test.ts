@@ -137,6 +137,20 @@ function broken(world: World, step: Step): string | undefined {
     }
   }
 
+  // 12 and 15. A save that failed holds the task, or keeps the workspace
+  // of a task that ended.
+  if (input.sender === "plugin" && input.kind === "session_stopped" && input.save === "failed") {
+    const state = after?.state;
+    if (
+      events.length > 0 &&
+      state !== undefined &&
+      state.phase !== "ended" &&
+      state.hold === undefined
+    ) {
+      return "rule 15: a failed save didn't hold the task";
+    }
+  }
+
   // 14. No workspace or session is left untracked, both ways.
   for (const [path, owner] of world.workspaces) {
     const task = world.tasks.get(owner);
@@ -154,6 +168,13 @@ function broken(world: World, step: Step): string | undefined {
   for (const task of world.tasks.values()) {
     for (const path of heldPaths(task)) {
       if (!world.workspaces.has(path)) return `rule 14: ${task.id} holds ${path}, which is gone`;
+    }
+    const state = task.state;
+    if (state.phase === "ended" && state.agent === undefined) {
+      if (state.copy !== undefined) return `rule 14: ended ${task.id} still holds its copy`;
+      if (state.workspace !== undefined && !state.workspace.unsaved) {
+        return `rule 14: ended ${task.id} never removed its workspace`;
+      }
     }
     const running = runningSession(task);
     if (running !== undefined) {
@@ -187,7 +208,9 @@ function broken(world: World, step: Step): string | undefined {
 
   // 22. Replaying the log rebuilds every task exactly.
   if (after !== undefined) {
-    const replayed = replay(world.log.get(after.id) ?? []);
+    // Replay reads the log as the store would save it.
+    const saved: Event[] = JSON.parse(JSON.stringify(world.log.get(after.id) ?? []));
+    const replayed = replay(saved);
     if (!Bun.deepEquals(replayed, after, true)) return `rule 22: replay of ${after.id} differs`;
   }
   return undefined;
@@ -245,7 +268,7 @@ function isReply(kind: string): boolean {
   return !["task_arrived", "outside_change", "tracker_reply"].includes(kind);
 }
 
-const runs = fc.array(fc.nat(), { minLength: 20, maxLength: 160 });
+const runs = fc.array(fc.nat(), { minLength: 100, maxLength: 400 });
 
 test("every rule holds after every step of random runs", () => {
   fc.assert(
@@ -279,6 +302,12 @@ test("random runs reach every event built so far", () => {
     "task.held",
     "proposals.approved",
     "proposals.denied",
+    "progress.reported",
+    "build.done",
+    "main.requested",
+    "main.merged",
+    "main.conflict",
+    "main.failed",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 });

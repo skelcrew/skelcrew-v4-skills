@@ -116,8 +116,30 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
   const step = state.step;
   switch (event.type) {
     case "phase.started": {
-      if (event.phase !== "build") return misfit(event, "not built yet");
-      if (state.phase !== "triage") return misfit(event, `the task is in ${state.phase}`);
+      if (event.phase === "review") {
+        if (state.phase !== "build" || state.workspace === undefined) {
+          return misfit(event, "review starts from build, with a workspace");
+        }
+        return ok({
+          ...task,
+          state: {
+            phase: "review",
+            intent: state.intent,
+            rigor: state.rigor,
+            approve: state.approve,
+            brief: state.brief,
+            ...(state.spec === undefined ? {} : { spec: state.spec }),
+            loops: state.loops,
+            workspace: state.workspace,
+            handover: event.handover,
+            reviewed: event.reviewed,
+            step: { kind: "queued" },
+            attached: false,
+            ...holdsOf(state),
+          },
+        });
+      }
+      if (state.phase === "build") return misfit(event, "the task is already in build");
       return ok({
         ...task,
         state: {
@@ -132,6 +154,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           ...(event.handback === undefined ? {} : { handback: event.handback }),
           step: { kind: "queued" },
           attached: false,
+          ...holdsOf(state),
         },
       });
     }
@@ -200,6 +223,61 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       }
       return misfit(event, "unknown phase");
     }
+
+    case "progress.reported":
+      if (step.kind !== "running" || step.session !== event.session) {
+        return misfit(event, "that session isn't running");
+      }
+      return ok(task);
+
+    case "build.done":
+      if (state.phase !== "build" || state.step.kind !== "stopping") {
+        return misfit(event, "the builder isn't being stopped");
+      }
+      return ok({
+        ...task,
+        state: { ...state, step: { ...state.step, handover: event.handover } },
+      });
+
+    case "main.requested":
+      if (state.phase !== "build" || state.step.kind !== "queued" || !state.step.handover) {
+        return misfit(event, "there is no handed-over work to merge");
+      }
+      if (event.request !== task.requests + 1) return misfit(event, "its request is out of order");
+      return ok({
+        ...task,
+        requests: event.request,
+        state: {
+          ...state,
+          step: { kind: "merging", request: event.request, handover: state.step.handover },
+        },
+      });
+
+    case "main.merged":
+    case "main.failed":
+      if (state.phase !== "build" || state.step.kind !== "merging") {
+        return misfit(event, "the task isn't merging");
+      }
+      if (state.step.request !== event.request) return misfit(event, "it answers another request");
+      return ok({
+        ...task,
+        state: { ...state, step: { kind: "queued", handover: state.step.handover } },
+      });
+
+    case "main.conflict":
+      if (state.phase !== "build" || state.step.kind !== "merging") {
+        return misfit(event, "the task isn't merging");
+      }
+      if (state.step.request !== event.request) return misfit(event, "it answers another request");
+      return ok({
+        ...task,
+        state: {
+          ...state,
+          loops: state.loops + 1,
+          handback: { kind: "conflict" },
+          step: { kind: "queued" },
+        },
+      });
 
     case "task.held":
       return ok({ ...task, state: { ...state, hold: event.hold } });
@@ -320,6 +398,15 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
 function savedIn<S extends { workspace?: Workspace }>(state: S, save: SaveResult): S {
   if (state.workspace === undefined) return state;
   return { ...state, workspace: { ...state.workspace, unsaved: save === "failed" } };
+}
+
+// A hold, and the hold last lifted, belong to the task, not its phase, so
+// they stay when the phase changes.
+function holdsOf(state: ActiveState): Pick<ActiveState, "hold" | "lifted"> {
+  return {
+    ...(state.hold === undefined ? {} : { hold: state.hold }),
+    ...(state.lifted === undefined ? {} : { lifted: state.lifted }),
+  };
 }
 
 // Sets a step every phase has.

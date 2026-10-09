@@ -40,9 +40,11 @@ export function stopped(draft: Draft, input: Stopped): void {
     save: input.save,
   });
   if (input.save === "failed") draft.record({ type: "task.held", hold: { kind: "unsaved" } });
+  const after = draft.task.state;
   if (before.phase === "triage" && "proceed" in before.step && before.step.proceed !== undefined) {
     const call = before.step.proceed;
     const yours = before.overrides;
+    const workspace = after.phase === "triage" ? after.workspace : undefined;
     draft.record({
       type: "phase.started",
       phase: "build",
@@ -52,7 +54,7 @@ export function stopped(draft: Draft, input: Stopped): void {
       brief: call.brief,
       ...(call.spec === undefined ? {} : { spec: call.spec }),
       loops: 0,
-      ...(before.workspace === undefined ? {} : { workspace: before.workspace }),
+      ...(workspace === undefined ? {} : { workspace }),
     });
   }
   advance(draft);

@@ -406,3 +406,38 @@ describe("your decisions on a split's proposals", () => {
     expect(refused(run.last)).toBe("task t1 has no proposals until it ends");
   });
 });
+
+describe("found in review of triage", () => {
+  test("a failed save after proceed holds the task, and no builder starts", () => {
+    const run = more(planning(), [
+      proceed(),
+      plugin({ kind: "session_stopped", session: 2, save: "failed" }),
+    ]);
+    expect(run.commands.filter((c) => c.kind === "start_session")).toHaveLength(0);
+    const state = taskOf(run).state;
+    expect(state.phase).toBe("build");
+    expect(state.phase === "build" && state.hold).toEqual({ kind: "unsaved" });
+    expect(state.phase === "build" && state.workspace?.unsaved).toBe(true);
+  });
+
+  test("your rigor wins over the planner's, and the planner's spec is kept", () => {
+    const run = play([
+      you({ kind: "add", title: "Fix export", description: "", rigor: "light" }),
+      daemon({ kind: "start" }),
+      plugin({ kind: "workspace_created", request: 1, path: "/w/t1" }),
+      plugin({ kind: "session_started", request: 2, harnessId: "h2" }),
+      proceed({ rigor: "full" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+    ]);
+    const state = taskOf(run).state;
+    expect(state.phase === "build" && [state.rigor, state.spec]).toEqual(["light", spec]);
+  });
+
+  test("after a split, the planner's own session end changes nothing", () => {
+    const run = more(planning(), [
+      split(),
+      plugin({ kind: "session_ended", session: 2, exitCode: 0, lastLine: "bye" }),
+    ]);
+    expect(run.last).toEqual({ ok: true, events: [], commands: [] });
+  });
+});

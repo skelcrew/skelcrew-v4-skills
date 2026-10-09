@@ -4,6 +4,7 @@
 // rules, under "How every input is judged".
 
 import { advance } from "./advance";
+import { builderCall, merged } from "./build";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
 import { decideProposals } from "./proposals";
@@ -69,6 +70,10 @@ function judgeEnded(draft: Draft, state: EndedState, input: Input): string | und
         stopped(draft, input);
         return undefined;
       }
+      // The stop in flight will answer for this session.
+      if (input.kind === "session_ended" && stoppingSession(draft.task) === input.session) {
+        return undefined;
+      }
       return input.kind === "session_started" ||
         input.kind === "session_failed" ||
         input.kind === "session_ended"
@@ -114,6 +119,8 @@ function fromAgent(draft: Draft, state: ActiveState, input: AgentInput): string 
   switch (state.phase) {
     case "triage":
       return triageCall(draft, state, input);
+    case "build":
+      return builderCall(draft, state, input);
     default:
       return "not built yet";
   }
@@ -157,6 +164,11 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
       return undefined;
     case "session_stopped":
       stopped(draft, input);
+      return undefined;
+    case "main_merged":
+    case "main_conflict":
+    case "main_failed":
+      merged(draft, input);
       return undefined;
     case "session_ended":
       // The stop in flight will answer for this session.
