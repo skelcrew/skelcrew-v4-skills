@@ -1,8 +1,10 @@
 // Holding a task and lifting the hold, killing it, and the failures that
 // let an agent go: a crash and giving up. `docs/core.md` part 6.
 
+import { advance } from "./advance";
 import { deliver } from "./delivery";
 import type { Draft } from "./draft";
+import { deliverAnswer } from "./questions";
 import { removeWorkspace, stopAgent } from "./stop";
 import { holdText, runningSession } from "./task";
 import type { ActiveState, EndReason, PluginInput, Task } from "./types";
@@ -130,4 +132,23 @@ export function endedStart(draft: Draft, input: SessionReply): string | undefine
       stopAgent(draft, input.session, "crashed", agent.save);
       return undefined;
   }
+}
+
+// Your start now. It goes past max_running, and lifts a hold.
+export function startNow(draft: Draft, state: ActiveState): string | undefined {
+  const step = state.step;
+  const question = state.question;
+  if (step.kind === "running" && question !== undefined && question.answer === undefined) {
+    return `task ${draft.task.id} waits for your answer`;
+  }
+  if (step.kind === "awaiting_approval") return `task ${draft.task.id} waits for your approval`;
+  const answerKept = step.kind === "running" && question?.answer !== undefined;
+  const startable = step.kind === "queued" || step.kind === "ready" || answerKept;
+  if (!startable) return `task ${draft.task.id} is already under way`;
+  draft.record({ type: "task.started" });
+  const now = draft.task.state;
+  if (answerKept && now.phase !== "ended") return deliverAnswer(draft, now);
+  advance(draft);
+  deliver(draft);
+  return undefined;
 }

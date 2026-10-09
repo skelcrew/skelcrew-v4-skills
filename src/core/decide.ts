@@ -10,7 +10,7 @@ import { change } from "./change";
 import { approve, delivered, deny } from "./delivery";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
-import { crashed, endedStart, giveUp, kill, letGo, lift, pause } from "./holds";
+import { crashed, endedStart, giveUp, kill, letGo, lift, pause, startNow } from "./holds";
 import { decideProposals } from "./proposals";
 import { answer, ask, deliverAnswer } from "./questions";
 import { testerCall } from "./review";
@@ -40,6 +40,7 @@ import type {
   PluginInput,
   Source,
   Task,
+  Usage,
   YouInput,
 } from "./types";
 
@@ -87,7 +88,7 @@ function judgeEnded(draft: Draft, state: EndedState, input: Input): string | und
       }
       return ended;
     case "daemon":
-      return input.kind === "usage" ? "not built yet" : ended;
+      return input.kind === "usage" ? reportUsage(draft, input) : ended;
     case "you":
       return input.kind === "approve_proposals" || input.kind === "deny_proposals"
         ? decideProposals(draft, state, input)
@@ -125,6 +126,8 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
       return attach(draft, state);
     case "detach":
       return detach(draft, state, input);
+    case "start":
+      return startNow(draft, state);
     case "pause":
       return pause(draft, state);
     case "resume":
@@ -164,6 +167,8 @@ function fromDaemon(draft: Draft, state: ActiveState, input: DaemonInput): strin
       return undefined;
     case "deliver_answer":
       return deliverAnswer(draft, state);
+    case "usage":
+      return reportUsage(draft, input);
     default:
       return "not built yet";
   }
@@ -224,6 +229,22 @@ function reply(draft: Draft, state: ActiveState, input: PluginInput): string | u
     default:
       return "not built yet";
   }
+}
+
+// A session's running totals. They only grow, so a lower report is older.
+function reportUsage(
+  draft: Draft,
+  input: Extract<DaemonInput, { kind: "usage" }>,
+): string | undefined {
+  const record = draft.task.sessions.find((s) => s.session === input.session);
+  if (record === undefined) return `task ${draft.task.id} never started session ${input.session}`;
+  const fields: (keyof Usage)[] = ["input", "output", "cacheWrite", "cacheRead", "minutes"];
+  if (fields.some((field) => input.usage[field] < record.usage[field])) {
+    return `usage for session ${input.session} went down, so this report is older`;
+  }
+  if (fields.every((field) => input.usage[field] === record.usage[field])) return undefined;
+  draft.record({ type: "usage.reported", session: input.session, usage: input.usage });
+  return undefined;
 }
 
 function startsUnwanted(state: Task["state"]): boolean {

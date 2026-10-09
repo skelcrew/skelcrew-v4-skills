@@ -2,6 +2,7 @@
 // It covers each sender, with good and bad versions: replies old and new,
 // agents in and out of their role, and your calls in any state.
 
+import { schedule } from "./schedule";
 import type { AgentInput, DaemonInput, Input, Role, TaskId, YouInput } from "./types";
 import type { World } from "./world";
 
@@ -81,15 +82,14 @@ function agentInputs(session: number, role: Role): Body<AgentInput>[] {
   ];
 }
 
-function daemon(): Body<DaemonInput>[] {
+// Usage for a session: totals that grow with time, and one report that
+// is lower than any real one.
+function usage(session: number, moment: number): Body<DaemonInput>[] {
+  const grown = { input: moment, output: moment, cacheWrite: 1, cacheRead: moment, minutes: 1 };
+  const lower = { input: 1, output: 0, cacheWrite: 0, cacheRead: 0, minutes: 0 };
   return [
-    { kind: "start" },
-    { kind: "deliver_answer" },
-    {
-      kind: "usage",
-      session: 2,
-      usage: { input: 10, output: 5, cacheWrite: 1, cacheRead: 100, minutes: 1 },
-    },
+    { kind: "usage", session, usage: grown },
+    { kind: "usage", session, usage: lower },
   ];
 }
 
@@ -100,7 +100,12 @@ export function candidates(world: World): Input[] {
   for (const task of taskIds) {
     const asked = world.tasks.get(task)?.asked ?? 0;
     for (const body of you(task, asked)) inputs.push({ ...body, sender: "you", task, ...stamp });
-    for (const body of daemon()) inputs.push({ ...body, sender: "daemon", task, ...stamp });
+    const lastSession = world.sent.findLast((c) => c.kind === "start_session" && c.task === task);
+    if (lastSession?.kind === "start_session") {
+      for (const body of usage(lastSession.request, stamp.at)) {
+        inputs.push({ ...body, sender: "daemon", task, ...stamp });
+      }
+    }
     inputs.push({
       sender: "plugin",
       task,
@@ -138,6 +143,8 @@ export function candidates(world: World): Input[] {
       }
     }
   }
+  // The daemon starts only what the scheduler picks.
+  inputs.push(...schedule([...world.tasks.values()], world.config, stamp.at));
   for (const reply of world.replies) {
     if (!world.fits(reply.task, reply.body)) continue;
     inputs.push({ ...reply.body, sender: "plugin", task: reply.task, ...stamp });
@@ -148,6 +155,9 @@ export function candidates(world: World): Input[] {
 // Inputs that move a task backwards or end it. Guided picks leave them out,
 // or they would crowd out progress.
 export function isBackward(world: World, input: Input): boolean {
+  // Usage is always accepted, and moves nothing, so it would crowd out
+  // progress too.
+  if (input.sender === "daemon" && input.kind === "usage") return true;
   if (input.sender === "you" && input.kind === "kill") {
     // Killing a held task is what you do with a stuck one. It crowds out
     // no progress.

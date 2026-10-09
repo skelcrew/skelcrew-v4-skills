@@ -7,7 +7,8 @@ import { expect, test } from "bun:test";
 import fc from "fast-check";
 import { candidates, isBackward } from "./candidates";
 import { evolve } from "./evolve";
-import { heldPaths, holdsSession, runningSession } from "./task";
+import { holdsSlot, slotsInUse } from "./schedule";
+import { heldPaths, holdsSession, runningSession, stoppingSession } from "./task";
 import {
   type Config,
   type Event,
@@ -353,6 +354,41 @@ function badDelivery(
   return undefined;
 }
 
+// 10. Skelcrew never puts more than max_running to work on its own. Only
+// your start or attach goes past it.
+// A stop in flight holds a slot, so nothing new starts while it finishes.
+// But a stop is cleanup, not putting an agent to work, so a task whose
+// agent is being stopped may take a slot back past the limit.
+function slotsBroken(world: World, step: Step, before: Set<string>): string | undefined {
+  const tasks = [...world.tasks.values()];
+  const after = slotsInUse(tasks);
+  if (after <= config.maxRunning) return undefined;
+  const { input } = step;
+  if (input.sender === "you" && (input.kind === "start" || input.kind === "attach"))
+    return undefined;
+  const added = tasks.filter((task) => holdsSlot(task) && !before.has(task.id));
+  if (added.every((task) => stoppingSession(task) !== undefined)) return undefined;
+  return `rule 10: ${after} slots in use after ${input.sender} ${input.kind}, past ${config.maxRunning}`;
+}
+
+// 21. Usage never goes down.
+function usageOf(world: World): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const task of world.tasks.values()) {
+    for (const { session, usage } of task.sessions) {
+      totals.set(`${task.id}:${session}`, usage.input + usage.output + usage.cacheRead);
+    }
+  }
+  return totals;
+}
+
+function usageBroken(world: World, before: Map<string, number>): string | undefined {
+  for (const [key, total] of usageOf(world)) {
+    if (total < (before.get(key) ?? 0)) return `rule 21: usage of ${key} went down`;
+  }
+  return undefined;
+}
+
 function replay(events: Event[]): Task | undefined {
   let task: Task | undefined;
   for (const event of events) {
@@ -378,12 +414,17 @@ function run(choices: number[], seen?: Set<EventType>): string | undefined {
     const pool = poolFor(world, mode, all);
     const input = pool[pick % pool.length];
     if (input === undefined) continue;
+    const slotsBefore = new Set([...world.tasks.values()].filter(holdsSlot).map((t) => t.id));
+    const usageBefore = usageOf(world);
     const step = world.play(input);
     if (seen !== undefined && step.decision.ok) {
       for (const event of step.decision.events) seen.add(event.type);
     }
     trail.push(describe(step));
-    const problem = broken(world, step);
+    const problem =
+      broken(world, step) ??
+      slotsBroken(world, step, slotsBefore) ??
+      usageBroken(world, usageBefore);
     if (problem !== undefined) {
       return `step ${i / 2}, ${input.sender} ${input.kind}: ${problem}\n${trail.slice(-12).join("\n")}`;
     }
@@ -478,6 +519,8 @@ test("random runs reach every event built so far", () => {
     "question.answered",
     "answer.delivered",
     "task.set",
+    "task.started",
+    "usage.reported",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 }, 120_000);

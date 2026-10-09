@@ -20,6 +20,7 @@ import type {
   SaveResult,
   Stopping,
   Task,
+  Usage,
   Verdict,
   Workspace,
 } from "./types";
@@ -105,6 +106,8 @@ function ended(task: Task, state: EndedState, event: Event): Evolved {
       }
       return ok({ ...task, state: { ...rest, ...keep } });
     }
+    case "usage.reported":
+      return usageIn(task, event);
     case "proposals.approved":
     case "proposals.denied": {
       const decision: ProposalState["decision"] =
@@ -513,6 +516,14 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       return ok({ ...task, state: { ...rest, lifted: hold } });
     }
 
+    case "task.started": {
+      const { hold, ...rest } = state;
+      return ok({ ...task, state: hold === undefined ? rest : { ...rest, lifted: hold } });
+    }
+
+    case "usage.reported":
+      return usageIn(task, event);
+
     case "task.killed":
       return end(task, state, { kind: "killed" }, []);
 
@@ -638,6 +649,20 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
 function savedIn<S extends { workspace?: Workspace }>(state: S, save: SaveResult | undefined): S {
   if (state.workspace === undefined || save === undefined) return state;
   return { ...state, workspace: { ...state.workspace, unsaved: save === "failed" } };
+}
+
+// A session's usage grows. A report lower than the last doesn't fit.
+function usageIn(task: Task, event: Extract<Event, { type: "usage.reported" }>): Evolved {
+  const record = task.sessions.find((s) => s.session === event.session);
+  if (record === undefined) return misfit(event, "the task never started that session");
+  const fields: (keyof Usage)[] = ["input", "output", "cacheWrite", "cacheRead", "minutes"];
+  if (fields.some((field) => event.usage[field] < record.usage[field])) {
+    return misfit(event, "usage went down");
+  }
+  const sessions = task.sessions.map((s) =>
+    s.session === event.session ? { ...s, usage: event.usage } : s,
+  );
+  return ok({ ...task, sessions });
 }
 
 // A hold, and the hold last lifted, belong to the task, not its phase, so

@@ -947,3 +947,62 @@ starts on the same branch.
   to say it.
 - **A kept answer is lost if its agent is let go first.** Rule 20 requires this. The log
   still shows `question.answered` with no `answer.delivered` after it, so you can see it.
+
+### Part 10: the scheduler, start now and usage
+
+**Which tasks hold a slot.** A task holds one slot, read from its state alone:
+
+| State | Holds a slot? |
+|---|---|
+| creating a workspace or copy, starting, stopping, merging | yes, held or not: a request in flight counts |
+| running, with no open question and not held | yes |
+| running, with an open question | no, unless you are attached |
+| running, attached | yes |
+| queued, awaiting approval, ready, delivering | no |
+| ended, still waiting on its agent's start or stop | yes |
+| ended otherwise | no |
+
+The scheduler is `schedule(tasks, config, at)`. It returns the daemon inputs for every free
+slot, up to `max_running` minus the slots in use, in this order: kept answers to deliver,
+then resumed tasks to start, then queued tasks. Oldest first within each, by when the task
+arrived, then by ID. A queued task is resumed while it holds the hold last lifted.
+
+**Start now** is your `start`. It goes past `max_running`.
+
+| State | Result |
+|---|---|
+| held | `task.started` lifts the hold. Then as below. |
+| queued | `task.started`, then the task asks for what it needs next |
+| ready | `task.started`, then delivery |
+| running, with a kept answer | `task.started`, then the answer is delivered |
+| running, with a question you haven't answered | refused: it waits for your answer |
+| awaiting approval | refused: it waits for your approval |
+| anything in flight, or running | refused: it is already under way |
+
+**Usage** is the daemon's report of one session's running totals. It is recorded as
+`usage.reported` when it grows. A report for a session the task never started is refused. A
+report lower than the last in any field is older, and is refused. A report equal to the last
+is accepted and records nothing. Usage is taken on ended tasks too. A task's usage is the
+sum of its sessions'.
+
+**Decisions**
+
+- **No count of starts in flight outside the tasks.** v3 counted them outside, because its
+  ended tasks forgot a start still in flight. Here an ended task keeps the agent it still
+  waits on, so every start and stop in flight shows in some task's state. The scheduler
+  reads only the tasks, and a restart rebuilds the same count by replaying the log.
+- **A request in flight holds its slot, even while the task is held.** Otherwise lifting a
+  hold before a workspace or merge answered would let the task take a slot the scheduler
+  never gave it.
+- **Delivery and awaiting approval hold no slot.** No agent runs.
+- **Start now on a held task lifts the hold.** You are acting on it, so there is nothing to
+  wait for. `task.started` records it, and resume or retry aren't needed first.
+- **The scheduler's order uses the time a task arrived**, for all three groups. The spec's
+  "oldest first" doesn't say oldest by what. Arrival order keeps the queue a queue.
+
+**How rule 10 is checked.** The property tests' daemon only sends what `schedule` returns.
+After every step, the slots in use are at most `max_running`, unless your start or attach
+just raised them, or the only tasks newly counted are ones whose agent is being stopped. A
+stop must hold its slot, so nothing new starts while it finishes. But it can't wait for a
+free slot either: an agent with an open question holds no slot, and if it crashes, its stop
+goes out at once. A stop is cleanup, not putting an agent to work.
