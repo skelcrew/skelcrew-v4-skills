@@ -11,6 +11,7 @@ import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
 import { crashed, endedStart, giveUp, kill, letGo, lift, pause } from "./holds";
 import { decideProposals } from "./proposals";
+import { answer, ask, deliverAnswer } from "./questions";
 import { testerCall } from "./review";
 import { stopped } from "./stop";
 import {
@@ -104,7 +105,7 @@ function judge(draft: Draft, state: ActiveState, input: Input): string | undefin
     case "daemon":
       return fromDaemon(draft, state, input);
     case "plugin":
-      return reply(draft, input);
+      return reply(draft, state, input);
     case "you":
       return fromYou(draft, state, input);
   }
@@ -115,6 +116,8 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
     case "approve_proposals":
     case "deny_proposals":
       return `task ${draft.task.id} has no proposals until it ends`;
+    case "reply":
+      return answer(draft, state, { text: input.text, by: { kind: "you" } });
     case "attach":
       return attach(draft, state);
     case "detach":
@@ -138,6 +141,7 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
 
 function fromAgent(draft: Draft, state: ActiveState, input: AgentInput): string | undefined {
   if (input.kind === "give_up") return giveUp(draft, input.session, input.reason);
+  if (input.kind === "ask") return ask(draft, state, input.session, input.text, input.options);
   switch (state.phase) {
     case "triage":
       return triageCall(draft, state, input);
@@ -155,13 +159,15 @@ function fromDaemon(draft: Draft, state: ActiveState, input: DaemonInput): strin
       if (state.step.kind !== "queued") return `task ${draft.task.id} isn't waiting for a slot`;
       advance(draft);
       return undefined;
+    case "deliver_answer":
+      return deliverAnswer(draft, state);
     default:
       return "not built yet";
   }
 }
 
 // A reply the task waits on. Late replies never get here.
-function reply(draft: Draft, input: PluginInput): string | undefined {
+function reply(draft: Draft, state: ActiveState, input: PluginInput): string | undefined {
   switch (input.kind) {
     case "workspace_created":
       draft.record({ type: "workspace.created", request: input.request, path: input.path });
@@ -191,6 +197,14 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
     case "session_stopped":
       stopped(draft, input);
       return undefined;
+    case "tracker_reply":
+      if (!draft.config.accounts.includes(input.account)) {
+        return `a reply from ${input.account} doesn't count as yours`;
+      }
+      return answer(draft, state, {
+        text: input.text,
+        by: { kind: "tracker", account: input.account },
+      });
     case "main_merged":
     case "main_conflict":
     case "main_failed":

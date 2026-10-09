@@ -440,6 +440,31 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       if (!state.attached) return misfit(event, "you aren't attached");
       return ok({ ...task, state: { ...state, attached: false } });
 
+    case "question.asked":
+      if (step.kind !== "running" || step.session !== event.session || state.question) {
+        return misfit(event, "only the running agent asks, one question at a time");
+      }
+      return ok({
+        ...task,
+        state: {
+          ...state,
+          question: { session: event.session, text: event.text, options: event.options },
+        },
+      });
+
+    case "question.answered":
+      if (state.question === undefined) return misfit(event, "there is no open question");
+      return ok({
+        ...task,
+        state: { ...state, question: { ...state.question, answer: event.answer } },
+      });
+
+    case "answer.delivered": {
+      const { question, ...rest } = state;
+      if (question?.answer === undefined) return misfit(event, "there is no answer to deliver");
+      return ok({ ...task, state: rest });
+    }
+
     case "task.paused":
       if (state.hold !== undefined) return misfit(event, "the task is already held");
       return ok({ ...task, state: { ...state, hold: { kind: "paused" } } });

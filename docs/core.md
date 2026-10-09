@@ -822,3 +822,42 @@ answer into the session (part 8). Agent inputs are still heard as usual.
 
 **Stories this part reaches:** none of the nine. A new one: you attach to a builder, then
 hand over, and the task merges main and goes to review.
+
+### Part 8: questions
+
+An agent asks and ends its turn. While the question is open, the task gives up its slot
+(part 10). Your answer is kept until a slot is free. Then the scheduler's "deliver answer"
+types it into the session, and the question closes.
+
+**The table.**
+
+| Input | State | Result |
+|---|---|---|
+| ask | the running agent, no open question | `question.asked`, with the session, text and options |
+| ask | a question already open | refused: one question at a time |
+| ask | empty text | refused |
+| reply | an open question | `question.answered`, by you. A second reply before delivery replaces the first. |
+| reply | no open question | refused |
+| reply | empty text | refused |
+| tracker reply | from an account config lists as yours | as reply, by that account |
+| tracker reply | from any other account | refused: it doesn't count as yours |
+| deliver answer | an answer kept, the asking session running, not held, not attached | `answer.delivered` and a type into session command with the answer |
+| deliver answer | no answer kept | refused |
+| deliver answer | you are attached | refused: you are in the session yourself |
+| proceed, split, decline, done, pass, changes | the agent's own question open | refused: it waits for your answer first |
+| progress, give up | the agent's own question open | accepted as usual. Giving up takes the question with the agent. |
+
+The question also goes whenever its agent is let go, by any stop. That is rule 20.
+
+**Decisions**
+
+- **A second reply replaces the first while it waits.** You may change your mind before the
+  answer reaches the agent. Once delivered, the question is closed, so a later reply is
+  refused.
+- **A kept answer isn't delivered while you are attached.** You are in the session, so you
+  can say it yourself. The answer stays kept until you detach.
+- **Options are passed through as given.** The core doesn't check that an answer is one of
+  them, since you may answer something else.
+- **The account check uses config, case for case.** "Me" and "me" are different accounts.
+
+**Stories this part reaches:** story 4.
