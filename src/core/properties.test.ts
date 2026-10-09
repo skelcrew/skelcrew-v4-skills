@@ -544,6 +544,10 @@ function isReply(kind: string): boolean {
   return !["task_arrived", "outside_change", "tracker_reply"].includes(kind);
 }
 
+// SKELCREW_PROPERTY_RUNS asks for a deeper run than the 300 each check
+// makes, such as 5000 before calling a part done.
+const deepRuns = Number(process.env.SKELCREW_PROPERTY_RUNS ?? 300) || 300;
+
 const runs = fc.array(fc.nat(), { minLength: 100, maxLength: 400 });
 
 test("every rule holds after every step of random runs", () => {
@@ -552,7 +556,7 @@ test("every rule holds after every step of random runs", () => {
       const problem = run(choices);
       if (problem !== undefined) throw new Error(problem);
     }),
-    { numRuns: 300, includeErrorInReport: true, endOnFailure: true },
+    { numRuns: deepRuns, includeErrorInReport: true, endOnFailure: true },
   );
 }, 120_000);
 
