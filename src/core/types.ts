@@ -72,8 +72,15 @@ export type Hold =
 export type Answer = { text: string; by: { kind: "you" } | { kind: "tracker"; account: string } };
 
 // An open question, and your answer once you gave it. The answer is kept
-// until a slot is free.
-export type Question = { session: number; text: string; options: string[]; answer?: Answer };
+// until a slot is free. Questions are numbered 1, 2, 3 on each task, and a
+// reply names the number it answers.
+export type Question = {
+  number: number;
+  session: number;
+  text: string;
+  options: string[];
+  answer?: Answer;
+};
 
 // --- Steps ---
 
@@ -233,6 +240,8 @@ export type Task = {
   receivedAt: Moment;
   // The last request number used. The next request takes one more.
   requests: number;
+  // How many questions its agents have asked.
+  asked: number;
   sessions: SessionRecord[];
   state: PhaseState;
 };
@@ -246,7 +255,7 @@ export type Settings = { intent?: Intent; rigor?: Rigor; approve?: boolean };
 export type YouInput = Envelope & { sender: "you" } & (
     | ({ kind: "add"; title: string; description: string } & Settings)
     | ({ kind: "set" } & Settings)
-    | { kind: "reply"; text: string }
+    | { kind: "reply"; question: number; text: string }
     | { kind: "approve" }
     | { kind: "deny"; note: string }
     | { kind: "approve_proposals"; which: number[] }
@@ -278,7 +287,7 @@ export type SaveResult = "saved" | "nothing" | "failed";
 export type PluginInput = Envelope & { sender: "plugin" } & (
     | { kind: "task_arrived"; source: Source; title: string; description: string }
     | { kind: "outside_change"; change: "closed" | "reopened" | "relabelled" }
-    | { kind: "tracker_reply"; account: string; text: string }
+    | { kind: "tracker_reply"; question: number; account: string; text: string }
     | { kind: "workspace_created"; request: number; path: string }
     | { kind: "workspace_failed"; request: number; error: string }
     | { kind: "session_started"; request: number; harnessId: string }
@@ -339,7 +348,7 @@ export type Event = Stamp &
     | { type: "session.failed"; request: number; error: string }
     | { type: "session.stopping"; session: number; save: boolean; reason: EndReason }
     | { type: "session.ended"; session: number; reason: EndReason; save: SaveResult }
-    | { type: "question.asked"; session: number; text: string; options: string[] }
+    | { type: "question.asked"; number: number; session: number; text: string; options: string[] }
     | { type: "question.answered"; answer: Answer }
     | { type: "answer.delivered" }
     | { type: "session.attached" }

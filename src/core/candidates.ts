@@ -14,7 +14,7 @@ const proposals = [
   { title: "Part two", description: "The second half" },
 ];
 
-function you(task: TaskId): Body<YouInput>[] {
+function you(task: TaskId, asked: number): Body<YouInput>[] {
   return [
     { kind: "add", title: `Task ${task}`, description: "Do it" },
     { kind: "add", title: `Task ${task}`, description: "Do it", intent: "ship", rigor: "light" },
@@ -27,7 +27,8 @@ function you(task: TaskId): Body<YouInput>[] {
     { kind: "set", intent: "ship", rigor: "full" },
     { kind: "set", approve: true },
     { kind: "set", approve: false },
-    { kind: "reply", text: "Yes" },
+    { kind: "reply", question: asked, text: "Yes" },
+    { kind: "reply", question: asked - 1, text: "Late" },
     { kind: "approve" },
     { kind: "deny", note: "Not like this" },
     { kind: "approve_proposals", which: [0] },
@@ -97,7 +98,8 @@ export function candidates(world: World): Input[] {
   const inputs: Input[] = [];
   const stamp = { at: world.now() };
   for (const task of taskIds) {
-    for (const body of you(task)) inputs.push({ ...body, sender: "you", task, ...stamp });
+    const asked = world.tasks.get(task)?.asked ?? 0;
+    for (const body of you(task, asked)) inputs.push({ ...body, sender: "you", task, ...stamp });
     for (const body of daemon()) inputs.push({ ...body, sender: "daemon", task, ...stamp });
     inputs.push({
       sender: "plugin",
@@ -110,7 +112,17 @@ export function candidates(world: World): Input[] {
     });
     inputs.push({ sender: "plugin", task, ...stamp, kind: "outside_change", change: "closed" });
     for (const account of ["me", "stranger"]) {
-      inputs.push({ sender: "plugin", task, ...stamp, kind: "tracker_reply", account, text: "Ok" });
+      for (const question of [asked, asked - 1]) {
+        inputs.push({
+          sender: "plugin",
+          task,
+          ...stamp,
+          kind: "tracker_reply",
+          question,
+          account,
+          text: "Ok",
+        });
+      }
     }
     // Agents: the last two sessions the task asked for, in every role, so
     // an old session and wrong roles come up too.
@@ -135,7 +147,13 @@ export function candidates(world: World): Input[] {
 
 // Inputs that move a task backwards or end it. Guided picks leave them out,
 // or they would crowd out progress.
-export function isBackward(input: Input): boolean {
+export function isBackward(world: World, input: Input): boolean {
+  if (input.sender === "you" && input.kind === "kill") {
+    // Killing a held task is what you do with a stuck one. It crowds out
+    // no progress.
+    const state = world.tasks.get(input.task)?.state;
+    return state === undefined || state.phase === "ended" || state.hold === undefined;
+  }
   if (input.sender === "you") {
     return ["pause", "kill", "set", "deny", "detach", "attach"].includes(input.kind);
   }

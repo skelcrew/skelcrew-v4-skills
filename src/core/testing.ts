@@ -110,6 +110,7 @@ export function aTask(state: Task["state"], extra: Partial<Task> = {}): Task {
     description: "",
     receivedAt: 1,
     requests: 2,
+    asked: 0,
     sessions: [],
     state,
     ...extra,

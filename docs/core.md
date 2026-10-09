@@ -927,3 +927,18 @@ next review uses the new rigor.
 **Stories this part reaches:** none of the nine. A new one: you change a `ship` task to
 `answer` while the builder runs. The builder stops, saving, and a fresh read-only builder
 starts on the same branch.
+
+**Found in review of part 8, and decided** (built with part 9)
+
+- **Each question has a number, and a reply names the question it answers.** Questions are
+  numbered 1, 2, 3 on each task, in the order asked. Without the number, a late tracker
+  comment written for the first question could answer a second one from a new agent, which
+  you never saw. A reply to a question that isn't open is refused. The CLI fills in the
+  open question's number. A task source fills in the number of the question its comment
+  replies to.
+- **Detaching closes the agent's open question.** You were in its session, so you could
+  answer it there. Without this, an agent you answered in person could never report,
+  since its question stayed open. Any kept answer is dropped with it, since you were there
+  to say it.
+- **A kept answer is lost if its agent is let go first.** Rule 20 requires this. The log
+  still shows `question.answered` with no `answer.delivered` after it, so you can see it.

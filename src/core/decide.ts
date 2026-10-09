@@ -120,7 +120,7 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
     case "set":
       return change(draft, input);
     case "reply":
-      return answer(draft, state, { text: input.text, by: { kind: "you" } });
+      return answer(draft, state, input.question, { text: input.text, by: { kind: "you" } });
     case "attach":
       return attach(draft, state);
     case "detach":
@@ -203,7 +203,7 @@ function reply(draft: Draft, state: ActiveState, input: PluginInput): string | u
       if (!draft.config.accounts.includes(input.account)) {
         return `a reply from ${input.account} doesn't count as yours`;
       }
-      return answer(draft, state, {
+      return answer(draft, state, input.question, {
         text: input.text,
         by: { kind: "tracker", account: input.account },
       });

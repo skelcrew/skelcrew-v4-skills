@@ -388,7 +388,7 @@ function poolFor(world: World, mode: number, all: Input[]): Input[] {
     const decision = world.judge(input);
     return decision.ok && decision.events.length > 0;
   });
-  const forward = mode === 2 ? accepted : accepted.filter((input) => !isBackward(input));
+  const forward = mode === 2 ? accepted : accepted.filter((input) => !isBackward(world, input));
   return forward.length > 0 ? forward : all;
 }
 

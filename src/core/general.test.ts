@@ -106,7 +106,7 @@ describe("an ended task", () => {
     you({ kind: "pause" }),
     you({ kind: "start" }),
     you({ kind: "set", intent: "ship" }),
-    you({ kind: "reply", text: "yes" }),
+    you({ kind: "reply", question: 1, text: "yes" }),
     you({ kind: "kill" }),
   ])("refuses $kind, since nothing leaves an ending", (input) => {
     expect(refused(judge(ended, input))).toBe("task t1 has ended");

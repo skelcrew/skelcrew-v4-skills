@@ -36,6 +36,7 @@ export function evolve(task: Task | undefined, event: Event): Evolved {
       description: event.description,
       receivedAt: event.at,
       requests: 0,
+      asked: 0,
       sessions: [],
       state: {
         phase: "triage",
@@ -438,22 +439,32 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         return misfit(event, "there is nothing to attach to");
       return ok({ ...task, state: { ...state, attached: true } });
 
-    case "session.detached":
+    case "session.detached": {
       if (!state.attached) return misfit(event, "you aren't attached");
       if (event.choice === "hand_over" && (state.phase !== "build" || state.intent === "answer")) {
         return misfit(event, "only a ship or try builder's work can be handed over");
       }
-      return ok({ ...task, state: { ...state, attached: false } });
+      // You were in the session, so you could answer its question there.
+      const { question: _, ...rest } = state;
+      return ok({ ...task, state: { ...rest, attached: false } });
+    }
 
     case "question.asked":
       if (step.kind !== "running" || step.session !== event.session || state.question) {
         return misfit(event, "only the running agent asks, one question at a time");
       }
+      if (event.number !== task.asked + 1) return misfit(event, "its number is out of order");
       return ok({
         ...task,
+        asked: event.number,
         state: {
           ...state,
-          question: { session: event.session, text: event.text, options: event.options },
+          question: {
+            number: event.number,
+            session: event.session,
+            text: event.text,
+            options: event.options,
+          },
         },
       });
 

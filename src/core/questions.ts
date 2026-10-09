@@ -14,13 +14,21 @@ export function ask(
 ): string | undefined {
   if (state.question !== undefined) return "a question is already open";
   if (text.trim() === "") return "the question is empty";
-  draft.record({ type: "question.asked", session, text, options });
+  draft.record({ type: "question.asked", number: draft.task.asked + 1, session, text, options });
   return undefined;
 }
 
 // Your answer is kept until a slot is free. A second one replaces it.
-export function answer(draft: Draft, state: ActiveState, given: Answer): string | undefined {
+export function answer(
+  draft: Draft,
+  state: ActiveState,
+  number: number,
+  given: Answer,
+): string | undefined {
   if (state.question === undefined) return `task ${draft.task.id} has no open question`;
+  if (state.question.number !== number) {
+    return `question ${number} is no longer open on task ${draft.task.id}`;
+  }
   if (given.text.trim() === "") return "the reply is empty";
   draft.record({ type: "question.answered", answer: given });
   return undefined;

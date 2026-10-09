@@ -32,6 +32,7 @@ describe("asking", () => {
     expect(types(run.events)).toEqual(["question.asked"]);
     expect(run.commands).toEqual([]);
     expect(questionOf(run)).toEqual({
+      number: 1,
       session: 2,
       text: "Keep the old format?",
       options: ["yes", "no"],
@@ -99,7 +100,7 @@ describe("asking", () => {
 
 describe("answering", () => {
   test("your reply is kept until a slot is free", () => {
-    const run = more(asked(), [you({ kind: "reply", text: "Yes" })]);
+    const run = more(asked(), [you({ kind: "reply", question: 1, text: "Yes" })]);
     expect(types(run.events)).toEqual(["question.answered"]);
     expect(run.commands).toEqual([]);
     expect(questionOf(run)?.answer).toEqual({ text: "Yes", by: { kind: "you" } });
@@ -107,24 +108,26 @@ describe("answering", () => {
 
   test("a second reply before delivery replaces the first", () => {
     const run = more(asked(), [
-      you({ kind: "reply", text: "Yes" }),
-      you({ kind: "reply", text: "No" }),
+      you({ kind: "reply", question: 1, text: "Yes" }),
+      you({ kind: "reply", question: 1, text: "No" }),
     ]);
     expect(questionOf(run)?.answer?.text).toBe("No");
   });
 
   test("a reply with no open question is refused", () => {
-    const run = more(building(), [you({ kind: "reply", text: "Yes" })]);
+    const run = more(building(), [you({ kind: "reply", question: 1, text: "Yes" })]);
     expect(refused(run.last)).toBe("task t1 has no open question");
   });
 
   test("an empty reply is refused", () => {
-    const run = more(asked(), [you({ kind: "reply", text: "" })]);
+    const run = more(asked(), [you({ kind: "reply", question: 1, text: "" })]);
     expect(refused(run.last)).toBe("the reply is empty");
   });
 
   test("a tracker reply from your account counts as yours", () => {
-    const run = more(asked(), [plugin({ kind: "tracker_reply", account: "me", text: "Yes" })]);
+    const run = more(asked(), [
+      plugin({ kind: "tracker_reply", question: 1, account: "me", text: "Yes" }),
+    ]);
     expect(questionOf(run)?.answer).toEqual({
       text: "Yes",
       by: { kind: "tracker", account: "me" },
@@ -133,14 +136,14 @@ describe("answering", () => {
 
   test("a tracker reply from anyone else is refused", () => {
     const run = more(asked(), [
-      plugin({ kind: "tracker_reply", account: "mallory", text: "Ship it" }),
+      plugin({ kind: "tracker_reply", question: 1, account: "mallory", text: "Ship it" }),
     ]);
     expect(refused(run.last)).toBe("a reply from mallory doesn't count as yours");
   });
 
   test("delivering the answer types it into the session and closes the question", () => {
     const run = more(asked(), [
-      you({ kind: "reply", text: "Yes" }),
+      you({ kind: "reply", question: 1, text: "Yes" }),
       daemon({ kind: "deliver_answer" }),
     ]);
     expect(types(run.events)).toEqual(["question.answered", "answer.delivered"]);
@@ -157,7 +160,7 @@ describe("answering", () => {
 
   test("a kept answer isn't delivered while you are attached", () => {
     const run = more(asked(), [
-      you({ kind: "reply", text: "Yes" }),
+      you({ kind: "reply", question: 1, text: "Yes" }),
       you({ kind: "attach" }),
       daemon({ kind: "deliver_answer" }),
     ]);
@@ -166,10 +169,105 @@ describe("answering", () => {
 
   test("a reply after delivery is refused, since the question has closed", () => {
     const run = more(asked(), [
-      you({ kind: "reply", text: "Yes" }),
+      you({ kind: "reply", question: 1, text: "Yes" }),
       daemon({ kind: "deliver_answer" }),
-      you({ kind: "reply", text: "No" }),
+      you({ kind: "reply", question: 1, text: "No" }),
     ]);
     expect(refused(run.last)).toBe("task t1 has no open question");
+  });
+});
+
+describe("found in review of questions", () => {
+  test("a late reply for an earlier question doesn't answer a new one", () => {
+    const run = more(asked(), [
+      you({ kind: "pause" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+      you({ kind: "resume" }),
+      daemon({ kind: "start" }),
+      plugin({ kind: "session_started", request: 3, harnessId: "h3" }),
+      agent({ session: 3, role: "builder", kind: "ask", text: "Delete the archive?", options: [] }),
+      plugin({ kind: "tracker_reply", question: 1, account: "me", text: "Yes" }),
+    ]);
+    expect(refused(run.last)).toBe("question 1 is no longer open on task t1");
+    expect(questionOf(run)).toMatchObject({ number: 2, text: "Delete the archive?" });
+  });
+
+  test("questions are numbered in the order asked", () => {
+    expect(questionOf(asked())?.number).toBe(1);
+  });
+
+  test("detaching closes the question, since you could answer it in the session", () => {
+    const run = more(asked(), [
+      you({ kind: "attach" }),
+      you({ kind: "detach", choice: "resume" }),
+      agent({
+        session: 2,
+        role: "builder",
+        kind: "done",
+        commit: "c",
+        files: [],
+        work: { kind: "summary", text: "x" },
+      }),
+    ]);
+    expect(types(run.events).slice(-2)).toEqual(["session.stopping", "build.done"]);
+  });
+
+  const reviewing = () =>
+    more(building(), [
+      agent({
+        session: 2,
+        role: "builder",
+        kind: "done",
+        commit: "c",
+        files: [],
+        work: { kind: "summary", text: "x" },
+      }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+      plugin({ kind: "main_merged", request: 3, commit: "m", files: [] }),
+      plugin({ kind: "workspace_created", request: 4, path: "/w/copy" }),
+      plugin({ kind: "session_started", request: 5, harnessId: "h5" }),
+      agent({ session: 5, role: "tester", kind: "ask", text: "Run e2e?", options: [] }),
+    ]);
+
+  test("a tester's pass waits for the answer", () => {
+    const run = more(reviewing(), [
+      agent({ session: 5, role: "tester", kind: "pass", evidence: "ok" }),
+    ]);
+    expect(refused(run.last)).toBe("the agent's own question is still open");
+  });
+
+  test("a tester's changes wait for the answer", () => {
+    const run = more(reviewing(), [
+      agent({ session: 5, role: "tester", kind: "changes", findings: "x" }),
+    ]);
+    expect(refused(run.last)).toBe("the agent's own question is still open");
+  });
+
+  const triaging = () =>
+    play([
+      you({ kind: "add", title: "Fix", description: "" }),
+      daemon({ kind: "start" }),
+      plugin({ kind: "workspace_created", request: 1, path: "/w/t1" }),
+      plugin({ kind: "session_started", request: 2, harnessId: "h2" }),
+      agent({ session: 2, role: "planner", kind: "ask", text: "Which?", options: [] }),
+    ]);
+
+  test("a planner's split waits for the answer", () => {
+    const run = more(triaging(), [
+      agent({
+        session: 2,
+        role: "planner",
+        kind: "split",
+        proposals: [{ title: "a", description: "" }],
+      }),
+    ]);
+    expect(refused(run.last)).toBe("the agent's own question is still open");
+  });
+
+  test("a planner's decline waits for the answer", () => {
+    const run = more(triaging(), [
+      agent({ session: 2, role: "planner", kind: "decline", reason: "No" }),
+    ]);
+    expect(refused(run.last)).toBe("the agent's own question is still open");
   });
 });
