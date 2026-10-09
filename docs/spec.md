@@ -20,6 +20,7 @@ Skelcrew is plumbing. It does not try to make agents smarter. It starts vanilla 
 
 - **Models improve faster than anyone can tinker around them.** Anything built to compensate for today's model weaknesses becomes dead code. Plumbing for the human does not. The test for every feature: if the next model is twice as good, does this become dead code? If yes, don't build it.
 - **Simple and dumb.** The core knows as little as possible.
+- **Any harness, any model.** Skelcrew never depends on one harness or one model. Each role names its harness and model in config, and everything specific to a harness lives in its profile. Claude Code is the first profile, not a requirement.
 - **Small pieces, loosely joined.** Each tool owns one job. Skelcrew is the joints between them.
 - **Guarantees in code, judgment in agents.** The agent proposes, the reducer disposes.
 - **Enforce by capability, not instruction.** Agents cannot bypass a rule because they never hold the power it protects.
@@ -224,7 +225,7 @@ spec: docs/plans/142-empty-export.md   # only when the planner judged one needed
   - **intent** restarts build with a fresh session on the same branch, since the permissions change
   - **intent and rigor together during triage** end triage, as `skel add --ship --light` would skip it
 
-  `skel set` is never refused for timing. While a workspace or session is starting, it waits until the step settles, then applies. A change to `answer` after commits is allowed: the branch's code stays where it is, and only the report is handed over.
+  `skel set` is never refused for timing, with one exception. While a workspace or session is starting, it waits until the step settles, then applies. Once a delivery is under way, a change to approval or intent is refused with "the delivery is already under way", since it could no longer apply. A change to `answer` after commits is allowed: the branch's code stays where it is, and only the report is handed over.
 
 ## Review
 
@@ -547,7 +548,7 @@ limits:
 
 ## Build plan
 
-Start over rather than rewriting v3, but carry its lessons.
+Start over rather than rewriting v3, but carry its lessons. `docs/ROADMAP.md` tracks the milestones, and `docs/TODO.md` the tasks for the current one.
 
 1. **Core, attended.** Types, events and invariants approved first, then the reducer with a test per transition, property tests, and a simulator that runs whole lifecycles with scripted replies.
 2. **Smallest real loop.** `skel add` → planner → builder in a worktree with tmux → tester in its own worktree → a branch.

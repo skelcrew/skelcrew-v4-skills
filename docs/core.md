@@ -162,8 +162,10 @@ verdict would quietly stop waiting.
 
 ### Changing intent, rigor or approval
 
-`skel set` overrules the planner's call. It is never refused for timing: while a workspace
-or session is starting, or main is merging, it waits until the step settles, then applies.
+`skel set` overrules the planner's call. It is never refused for timing, with one
+exception: while a workspace or session is starting, or main is merging, it waits until the
+step settles, then applies. Once a delivery is under way, a change to approval or intent is
+refused with "the delivery is already under way", since it could no longer apply.
 
 - **Approval applies at once.** Setting it stops a task before delivery. Clearing it on a
   task awaiting approval sends it on to delivery, unless its changed files still touch a
