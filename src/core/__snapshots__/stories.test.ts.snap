@@ -1,0 +1,4119 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`1. a quick fix: triage skipped, built, merged, reviewed and delivered 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "light",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix button color",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix button color",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "light",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-button-color",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-button-color",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix button color",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "light",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 4,
+        "task": "t1",
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "commit": "m3",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 3,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m3",
+          "files": [
+            "src/export.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix button color",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1-copy",
+        "request": 5,
+        "review": {
+          "commit": "m3",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "light",
+        "role": "tester",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "path": "/w/t1-copy",
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "edits": false,
+        "request": 5,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 9000,
+        "harnessId": "h5",
+        "session": 5,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 5,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 10000,
+        "reason": "reported",
+        "save": false,
+        "session": 5,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 10000,
+        "evidence": "All tests pass",
+        "session": 5,
+        "task": "t1",
+        "type": "review.passed",
+        "v": 1,
+      },
+    ],
+    "input": "pass",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1-copy",
+        "task": "t1",
+      },
+      {
+        "kind": "deliver_output",
+        "output": {
+          "branch": "skel/t1-fix-button-color",
+          "commit": "m3",
+          "evidence": "All tests pass",
+          "kind": "branch",
+          "mergeable": true,
+          "summary": "Headers on empty reports",
+        },
+        "request": 6,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 11000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 5,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 11000,
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "at": 11000,
+        "critical": false,
+        "output": {
+          "branch": "skel/t1-fix-button-color",
+          "commit": "m3",
+          "evidence": "All tests pass",
+          "kind": "branch",
+          "mergeable": true,
+          "summary": "Headers on empty reports",
+        },
+        "task": "t1",
+        "type": "output.ready",
+        "v": 1,
+      },
+      {
+        "at": 11000,
+        "request": 6,
+        "task": "t1",
+        "type": "output.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 12000,
+        "request": 6,
+        "task": "t1",
+        "type": "output.delivered",
+        "v": 1,
+      },
+      {
+        "at": 12000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+    ],
+    "input": "output_delivered",
+  },
+]
+`;
+
+exports[`2. a full feature with sign-off: one round of changes, then approval 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "Before they expire",
+        "overrides": {},
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Refresh auth tokens",
+        "type": "task.received",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": 
+"Refresh auth tokens
+
+Before they expire"
+,
+        "edits": false,
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "role": "planner",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": false,
+        "request": 2,
+        "role": "planner",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "write": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "outcome": {
+          "approve": true,
+          "brief": "Refresh tokens a minute early.",
+          "intent": "ship",
+          "kind": "proceed",
+          "rigor": "full",
+          "spec": {
+            "path": "docs/plans/t1-refresh-auth-tokens.md",
+            "text": "# Plan",
+          },
+        },
+        "task": "t1",
+        "type": "task.triaged",
+        "v": 1,
+      },
+    ],
+    "input": "proceed",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Refresh tokens a minute early.",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 3,
+        "rigor": "full",
+        "role": "builder",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "approve": true,
+        "at": 6000,
+        "brief": "Refresh tokens a minute early.",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "path": "/w/t1",
+          "request": 1,
+          "unsaved": false,
+        },
+      },
+      {
+        "at": 6000,
+        "edits": true,
+        "request": 3,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 7000,
+        "harnessId": "h3",
+        "session": 3,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "reason": "reported",
+        "save": true,
+        "session": 3,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "handover": {
+          "by": "builder",
+          "commit": "c3",
+          "files": [
+            "src/auth/token.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 4,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 9000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 3,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 9000,
+        "request": 4,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 5,
+        "task": "t1",
+        "workspace": {
+          "commit": "m4",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 10000,
+        "commit": "m4",
+        "files": [
+          "src/auth/token.ts",
+        ],
+        "request": 4,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 10000,
+        "handover": {
+          "by": "builder",
+          "commit": "c3",
+          "files": [
+            "src/auth/token.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m4",
+          "files": [
+            "src/auth/token.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 10000,
+        "request": 5,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m4",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Refresh tokens a minute early.",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1-copy",
+        "request": 6,
+        "review": {
+          "commit": "m4",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "full",
+        "role": "tester",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 11000,
+        "path": "/w/t1-copy",
+        "request": 5,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 11000,
+        "edits": false,
+        "request": 6,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 12000,
+        "harnessId": "h6",
+        "session": 6,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 6,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 13000,
+        "reason": "reported",
+        "save": false,
+        "session": 6,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 13000,
+        "findings": "No test for empty reports",
+        "session": 6,
+        "task": "t1",
+        "type": "review.changes_requested",
+        "v": 1,
+      },
+    ],
+    "input": "changes",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1-copy",
+        "task": "t1",
+      },
+      {
+        "brief": "Refresh tokens a minute early.",
+        "edits": true,
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 7,
+        "rigor": "full",
+        "role": "builder",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 14000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 6,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 14000,
+        "request": 5,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "approve": true,
+        "at": 14000,
+        "brief": "Refresh tokens a minute early.",
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "loops": 1,
+        "phase": "build",
+        "rigor": "full",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "path": "/w/t1",
+          "request": 1,
+          "unsaved": false,
+        },
+      },
+      {
+        "at": 14000,
+        "edits": true,
+        "request": 7,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 15000,
+        "harnessId": "h7",
+        "session": 7,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 7,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 16000,
+        "reason": "reported",
+        "save": true,
+        "session": 7,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 16000,
+        "handover": {
+          "by": "builder",
+          "commit": "c7",
+          "files": [
+            "src/auth/token.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 8,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 17000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 7,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 17000,
+        "request": 8,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 9,
+        "task": "t1",
+        "workspace": {
+          "commit": "m8",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 18000,
+        "commit": "m8",
+        "files": [
+          "src/auth/token.ts",
+        ],
+        "request": 8,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 18000,
+        "handover": {
+          "by": "builder",
+          "commit": "c7",
+          "files": [
+            "src/auth/token.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m8",
+          "files": [
+            "src/auth/token.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 18000,
+        "request": 9,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m8",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Refresh tokens a minute early.",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1-copy2",
+        "request": 10,
+        "review": {
+          "commit": "m8",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "full",
+        "role": "tester",
+        "spec": {
+          "path": "docs/plans/t1-refresh-auth-tokens.md",
+          "text": "# Plan",
+        },
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 19000,
+        "path": "/w/t1-copy2",
+        "request": 9,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 19000,
+        "edits": false,
+        "request": 10,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 20000,
+        "harnessId": "h10",
+        "session": 10,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 10,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 21000,
+        "reason": "reported",
+        "save": false,
+        "session": 10,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 21000,
+        "evidence": "All tests pass",
+        "session": 10,
+        "task": "t1",
+        "type": "review.passed",
+        "v": 1,
+      },
+    ],
+    "input": "pass",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1-copy2",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 22000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 10,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 22000,
+        "request": 9,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "at": 22000,
+        "critical": true,
+        "output": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "commit": "m8",
+          "evidence": "All tests pass",
+          "kind": "branch",
+          "mergeable": true,
+          "summary": "Headers on empty reports",
+        },
+        "task": "t1",
+        "type": "output.ready",
+        "v": 1,
+      },
+      {
+        "at": 22000,
+        "task": "t1",
+        "type": "approval.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "deliver_output",
+        "output": {
+          "branch": "skel/t1-refresh-auth-tokens",
+          "commit": "m8",
+          "evidence": "All tests pass",
+          "kind": "branch",
+          "mergeable": true,
+          "summary": "Headers on empty reports",
+        },
+        "request": 11,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 23000,
+        "task": "t1",
+        "type": "approval.given",
+        "v": 1,
+      },
+      {
+        "at": 23000,
+        "request": 11,
+        "task": "t1",
+        "type": "output.requested",
+        "v": 1,
+      },
+    ],
+    "input": "approve",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 24000,
+        "request": 11,
+        "task": "t1",
+        "type": "output.delivered",
+        "v": 1,
+      },
+      {
+        "at": 24000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+    ],
+    "input": "output_delivered",
+  },
+]
+`;
+
+exports[`3. a crash and a retry: held with the exit code, then a fresh builder told why 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "hold": {
+          "exitCode": 137,
+          "kind": "crashed",
+          "lastLine": "Killed",
+        },
+        "task": "t1",
+        "type": "task.held",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "reason": "crashed",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+    ],
+    "input": "session_ended",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "crashed",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "input": "start",
+    "refused": "task t1 is held: its session crashed with exit code 137: Killed",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 8000,
+        "task": "t1",
+        "type": "task.resumed",
+        "v": 1,
+        "via": "retry",
+      },
+    ],
+    "input": "retry",
+  },
+  {
+    "commands": [
+      {
+        "back": {
+          "exitCode": 137,
+          "kind": "crashed",
+          "lastLine": "Killed",
+        },
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 3,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 9000,
+        "edits": true,
+        "request": 3,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 10000,
+        "harnessId": "h3",
+        "session": 3,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+]
+`;
+
+exports[`4. a question: the slot frees, your answer waits, then reaches the builder 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 5000,
+        "number": 1,
+        "options": [
+          "yes",
+          "no",
+        ],
+        "session": 2,
+        "task": "t1",
+        "text": "Keep CSV?",
+        "type": "question.asked",
+        "v": 1,
+      },
+    ],
+    "input": "ask",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "answer": {
+          "by": {
+            "kind": "you",
+          },
+          "text": "yes",
+        },
+        "at": 6000,
+        "task": "t1",
+        "type": "question.answered",
+        "v": 1,
+      },
+    ],
+    "input": "reply",
+  },
+  {
+    "commands": [
+      {
+        "kind": "type_into_session",
+        "session": 2,
+        "task": "t1",
+        "text": "yes",
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "task": "t1",
+        "type": "answer.delivered",
+        "v": 1,
+      },
+    ],
+    "input": "deliver_answer",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+]
+`;
+
+exports[`5. a split: the task ends, its workspace and branch go, one proposal is approved 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {},
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Rework export",
+        "type": "task.received",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-rework-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-rework-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Rework export",
+        "edits": false,
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "role": "planner",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": false,
+        "request": 2,
+        "role": "planner",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": false,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "outcome": {
+          "kind": "split",
+          "proposals": [
+            {
+              "description": "Empty reports",
+              "title": "Export headers",
+            },
+            {
+              "description": "Totals",
+              "title": "Export footers",
+            },
+          ],
+        },
+        "task": "t1",
+        "type": "task.triaged",
+        "v": 1,
+      },
+    ],
+    "input": "split",
+  },
+  {
+    "commands": [
+      {
+        "deleteBranch": "skel/t1-rework-export",
+        "kind": "remove_workspace",
+        "path": "/w/t1",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "add_tasks",
+        "proposals": [
+          {
+            "description": "Empty reports",
+            "title": "Export headers",
+          },
+        ],
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "task": "t1",
+        "type": "proposals.approved",
+        "v": 1,
+        "which": [
+          0,
+        ],
+      },
+    ],
+    "input": "approve_proposals",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 8000,
+        "task": "t1",
+        "type": "proposals.denied",
+        "v": 1,
+        "which": [
+          1,
+        ],
+      },
+    ],
+    "input": "deny_proposals",
+  },
+  {
+    "input": "pause",
+    "refused": "task t1 has ended",
+  },
+]
+`;
+
+exports[`6. a prototype: try skips review and is delivered as not mergeable 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "try",
+          "rigor": "light",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Try offline sync",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Try offline sync",
+        "intent": "try",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "light",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-try-offline-sync",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-try-offline-sync",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Try offline sync",
+        "edits": true,
+        "intent": "try",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "light",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "try",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "deliver_output",
+        "output": {
+          "branch": "skel/t1-try-offline-sync",
+          "commit": "m3",
+          "kind": "branch",
+          "mergeable": false,
+          "summary": "Headers on empty reports",
+        },
+        "request": 4,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "commit": "m3",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 3,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "critical": false,
+        "output": {
+          "branch": "skel/t1-try-offline-sync",
+          "commit": "m3",
+          "kind": "branch",
+          "mergeable": false,
+          "summary": "Headers on empty reports",
+        },
+        "task": "t1",
+        "type": "output.ready",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "request": 4,
+        "task": "t1",
+        "type": "output.requested",
+        "v": 1,
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "request": 4,
+        "task": "t1",
+        "type": "output.delivered",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+    ],
+    "input": "output_delivered",
+  },
+]
+`;
+
+exports[`7. a conflict: a loop is counted and a fresh builder gets the merge back 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "handback": {
+          "kind": "conflict",
+        },
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 4,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.conflict",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "edits": true,
+        "request": 4,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "main_conflict",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 8000,
+        "harnessId": "h4",
+        "session": 4,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+]
+`;
+
+exports[`8. the loop cap: three rounds of changes hold the task, and kill fails it 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 4,
+        "task": "t1",
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "commit": "m3",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 3,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "handover": {
+          "by": "builder",
+          "commit": "c2",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m3",
+          "files": [
+            "src/export.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/copy2",
+        "request": 5,
+        "review": {
+          "commit": "m3",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "full",
+        "role": "tester",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "path": "/w/copy2",
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "edits": false,
+        "request": 5,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 9000,
+        "harnessId": "h5",
+        "session": 5,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 5,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 10000,
+        "reason": "reported",
+        "save": false,
+        "session": 5,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 10000,
+        "findings": "No test for empty reports",
+        "session": 5,
+        "task": "t1",
+        "type": "review.changes_requested",
+        "v": 1,
+      },
+    ],
+    "input": "changes",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/copy2",
+        "task": "t1",
+      },
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 6,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 11000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 5,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 11000,
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 11000,
+        "brief": "Fix export",
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "loops": 1,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "path": "/w/t1",
+          "request": 1,
+          "unsaved": false,
+        },
+      },
+      {
+        "at": 11000,
+        "edits": true,
+        "request": 6,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 12000,
+        "harnessId": "h6",
+        "session": 6,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 6,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 13000,
+        "reason": "reported",
+        "save": true,
+        "session": 6,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 13000,
+        "handover": {
+          "by": "builder",
+          "commit": "c6",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 7,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 14000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 6,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 14000,
+        "request": 7,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 8,
+        "task": "t1",
+        "workspace": {
+          "commit": "m7",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 15000,
+        "commit": "m7",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 7,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 15000,
+        "handover": {
+          "by": "builder",
+          "commit": "c6",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m7",
+          "files": [
+            "src/export.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 15000,
+        "request": 8,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m7",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/copy6",
+        "request": 9,
+        "review": {
+          "commit": "m7",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "full",
+        "role": "tester",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 16000,
+        "path": "/w/copy6",
+        "request": 8,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 16000,
+        "edits": false,
+        "request": 9,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 17000,
+        "harnessId": "h9",
+        "session": 9,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 9,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 18000,
+        "reason": "reported",
+        "save": false,
+        "session": 9,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 18000,
+        "findings": "No test for empty reports",
+        "session": 9,
+        "task": "t1",
+        "type": "review.changes_requested",
+        "v": 1,
+      },
+    ],
+    "input": "changes",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/copy6",
+        "task": "t1",
+      },
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 10,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 19000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 9,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 19000,
+        "request": 8,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 19000,
+        "brief": "Fix export",
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "loops": 2,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "path": "/w/t1",
+          "request": 1,
+          "unsaved": false,
+        },
+      },
+      {
+        "at": 19000,
+        "edits": true,
+        "request": 10,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 20000,
+        "harnessId": "h10",
+        "session": 10,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 10,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 21000,
+        "reason": "reported",
+        "save": true,
+        "session": 10,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 21000,
+        "handover": {
+          "by": "builder",
+          "commit": "c10",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "done",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 11,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 22000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 10,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 22000,
+        "request": 11,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 12,
+        "task": "t1",
+        "workspace": {
+          "commit": "m11",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 23000,
+        "commit": "m11",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 11,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 23000,
+        "handover": {
+          "by": "builder",
+          "commit": "c10",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m11",
+          "files": [
+            "src/export.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 23000,
+        "request": 12,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m11",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": false,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/copy10",
+        "request": 13,
+        "review": {
+          "commit": "m11",
+          "work": {
+            "kind": "summary",
+            "text": "Headers on empty reports",
+          },
+        },
+        "rigor": "full",
+        "role": "tester",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 24000,
+        "path": "/w/copy10",
+        "request": 12,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 24000,
+        "edits": false,
+        "request": 13,
+        "role": "tester",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 25000,
+        "harnessId": "h13",
+        "session": 13,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": false,
+        "session": 13,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 26000,
+        "reason": "reported",
+        "save": false,
+        "session": 13,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 26000,
+        "findings": "No test for empty reports",
+        "session": 13,
+        "task": "t1",
+        "type": "review.changes_requested",
+        "v": 1,
+      },
+    ],
+    "input": "changes",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/copy10",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 27000,
+        "reason": "reported",
+        "save": "nothing",
+        "session": 13,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 27000,
+        "request": 12,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 27000,
+        "brief": "Fix export",
+        "handback": {
+          "kind": "findings",
+          "text": "No test for empty reports",
+        },
+        "intent": "ship",
+        "loops": 3,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "path": "/w/t1",
+          "request": 1,
+          "unsaved": false,
+        },
+      },
+      {
+        "at": 27000,
+        "hold": {
+          "findings": "No test for empty reports",
+          "kind": "loop_cap",
+        },
+        "task": "t1",
+        "type": "task.held",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "remove_workspace",
+        "path": "/w/t1",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 28000,
+        "task": "t1",
+        "type": "task.failed",
+        "v": 1,
+      },
+      {
+        "at": 28000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.removed",
+        "v": 1,
+      },
+    ],
+    "input": "kill",
+  },
+]
+`;
+
+exports[`9. a pause during a start: the new session is stopped once it starts 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "task": "t1",
+        "type": "task.paused",
+        "v": 1,
+      },
+    ],
+    "input": "pause",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "reason": "stopped",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "stopped",
+        "save": "nothing",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "input": "start",
+    "refused": "task t1 is held: you paused it",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 8000,
+        "task": "t1",
+        "type": "task.resumed",
+        "v": 1,
+        "via": "resume",
+      },
+    ],
+    "input": "resume",
+  },
+  {
+    "commands": [
+      {
+        "back": {
+          "kind": "paused",
+        },
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 3,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 9000,
+        "edits": true,
+        "request": 3,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "start",
+  },
+]
+`;
+
+exports[`10. you attach and hand over: the task merges main and goes to review 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Fix export",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Fix export",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-fix-export",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Fix export",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 5000,
+        "task": "t1",
+        "type": "session.attached",
+        "v": 1,
+      },
+    ],
+    "input": "attach",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "choice": "hand_over",
+        "task": "t1",
+        "type": "session.detached",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "reason": "reported",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "handover": {
+          "by": "you",
+          "commit": "c-you",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Handed over by you.",
+          },
+        },
+        "task": "t1",
+        "type": "build.done",
+        "v": 1,
+      },
+    ],
+    "input": "detach",
+  },
+  {
+    "commands": [
+      {
+        "kind": "merge_main",
+        "path": "/w/t1",
+        "request": 3,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 7000,
+        "reason": "reported",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 7000,
+        "request": 3,
+        "task": "t1",
+        "type": "main.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 4,
+        "task": "t1",
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 8000,
+        "commit": "m3",
+        "files": [
+          "src/export.ts",
+        ],
+        "request": 3,
+        "task": "t1",
+        "type": "main.merged",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "handover": {
+          "by": "you",
+          "commit": "c-you",
+          "files": [
+            "src/export.ts",
+          ],
+          "intent": "ship",
+          "work": {
+            "kind": "summary",
+            "text": "Handed over by you.",
+          },
+        },
+        "phase": "review",
+        "reviewed": {
+          "commit": "m3",
+          "files": [
+            "src/export.ts",
+          ],
+        },
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+      {
+        "at": 8000,
+        "request": 4,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "commit": "m3",
+          "kind": "copy",
+        },
+      },
+    ],
+    "input": "main_merged",
+  },
+]
+`;
+
+exports[`11. a change of intent: the builder stops, saving, and a read-only one starts 1`] = `
+[
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 1000,
+        "description": "",
+        "overrides": {
+          "intent": "ship",
+          "rigor": "full",
+        },
+        "source": {
+          "id": "t1",
+          "kind": "local",
+        },
+        "task": "t1",
+        "title": "Why is search slow",
+        "type": "task.received",
+        "v": 1,
+      },
+      {
+        "approve": false,
+        "at": 1000,
+        "brief": "Why is search slow",
+        "intent": "ship",
+        "loops": 0,
+        "phase": "build",
+        "rigor": "full",
+        "task": "t1",
+        "type": "phase.started",
+        "v": 1,
+      },
+    ],
+    "input": "add",
+  },
+  {
+    "commands": [
+      {
+        "kind": "create_workspace",
+        "request": 1,
+        "task": "t1",
+        "workspace": {
+          "branch": "skel/t1-why-is-search-slow",
+          "kind": "task",
+        },
+      },
+    ],
+    "events": [
+      {
+        "at": 2000,
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.requested",
+        "v": 1,
+        "workspace": {
+          "branch": "skel/t1-why-is-search-slow",
+          "kind": "task",
+        },
+      },
+    ],
+    "input": "start",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Why is search slow",
+        "edits": true,
+        "intent": "ship",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 2,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 3000,
+        "path": "/w/t1",
+        "request": 1,
+        "task": "t1",
+        "type": "workspace.created",
+        "v": 1,
+      },
+      {
+        "at": 3000,
+        "edits": true,
+        "request": 2,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "workspace_created",
+  },
+  {
+    "commands": [],
+    "events": [
+      {
+        "at": 4000,
+        "harnessId": "h2",
+        "session": 2,
+        "task": "t1",
+        "type": "session.started",
+        "v": 1,
+      },
+    ],
+    "input": "session_started",
+  },
+  {
+    "commands": [
+      {
+        "kind": "stop_session",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 5000,
+        "intent": "answer",
+        "task": "t1",
+        "type": "task.set",
+        "v": 1,
+      },
+      {
+        "at": 5000,
+        "reason": "stopped",
+        "save": true,
+        "session": 2,
+        "task": "t1",
+        "type": "session.stopping",
+        "v": 1,
+      },
+    ],
+    "input": "set",
+  },
+  {
+    "commands": [
+      {
+        "brief": "Why is search slow",
+        "edits": false,
+        "intent": "answer",
+        "kind": "start_session",
+        "path": "/w/t1",
+        "request": 3,
+        "rigor": "full",
+        "role": "builder",
+        "task": "t1",
+      },
+    ],
+    "events": [
+      {
+        "at": 6000,
+        "reason": "stopped",
+        "save": "saved",
+        "session": 2,
+        "task": "t1",
+        "type": "session.ended",
+        "v": 1,
+      },
+      {
+        "at": 6000,
+        "edits": false,
+        "request": 3,
+        "role": "builder",
+        "task": "t1",
+        "type": "session.requested",
+        "v": 1,
+      },
+    ],
+    "input": "session_stopped",
+  },
+]
+`;

@@ -84,6 +84,14 @@ function broken(world: World, step: Step): string | undefined {
     }
   }
 
+  // 13. At most one open question per task: an ask is heard only when none
+  // is open.
+  if (input.sender === "agent" && input.kind === "ask" && decision.ok) {
+    if (before?.state.phase !== "ended" && before?.state.question !== undefined) {
+      return "rule 13: a second question was asked while one was open";
+    }
+  }
+
   // 3. Proposed tasks never enter the queue without you.
   if (commands.some((c) => c.kind === "add_tasks") && !types.includes("proposals.approved")) {
     return "rule 3: tasks were added without proposals.approved";
