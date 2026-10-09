@@ -6,14 +6,17 @@
 import { branchName, phaseRole } from "./task";
 import type {
   ActiveState,
+  BuildState,
   EndedState,
   Event,
   Evolved,
+  LastStep,
   Leftover,
   Outcome,
   PhaseState,
   Proposal,
   ProposalState,
+  ReviewState,
   SaveResult,
   Stopping,
   Task,
@@ -140,7 +143,6 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           },
         });
       }
-      if (state.phase === "build") return misfit(event, "the task is already in build");
       return ok({
         ...task,
         state: {
@@ -186,6 +188,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       if (state.phase !== "triage" || state.step.kind !== "stopping") {
         return misfit(event, "the planner isn't being stopped");
       }
+      if (state.step.proceed !== undefined) return misfit(event, "triage already has its call");
       const outcome = event.outcome;
       if (outcome.kind === "proceed") {
         const { kind: _, ...proceed } = outcome;
@@ -231,6 +234,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         return misfit(event, "the tester isn't being stopped");
       }
       if (state.step.session !== event.session) return misfit(event, "it is another session's");
+      if (state.step.verdict !== undefined) return misfit(event, "the verdict is already in");
       const verdict: Verdict =
         event.type === "review.passed"
           ? { kind: "pass", evidence: event.evidence }
@@ -254,6 +258,70 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       return misfit(event, "the task doesn't hold that workspace, or it is in use");
     }
 
+    case "output.ready": {
+      if (state.phase === "triage") return misfit(event, "triage has no output");
+      if (step.kind !== "queued" && step.kind !== "awaiting_approval") {
+        return misfit(event, `the step is ${step.kind}`);
+      }
+      const ready: LastStep = { kind: "ready", output: event.output, critical: event.critical };
+      return ok({ ...task, state: withLast(state, ready) });
+    }
+
+    case "approval.requested":
+      if (state.phase === "triage" || state.step.kind !== "ready") {
+        return misfit(event, "the output isn't ready");
+      }
+      return ok({
+        ...task,
+        state: withLast(state, { ...state.step, kind: "awaiting_approval" }),
+      });
+
+    case "approval.given":
+      if (state.phase === "triage" || state.step.kind !== "awaiting_approval") {
+        return misfit(event, "the task isn't waiting for approval");
+      }
+      return ok({ ...task, state: withLast(state, { ...state.step, kind: "ready" }) });
+
+    case "approval.denied":
+      if (step.kind !== "awaiting_approval")
+        return misfit(event, "the task isn't waiting for approval");
+      return ok(task);
+
+    case "output.requested":
+      if (state.phase === "triage" || state.step.kind !== "ready") {
+        return misfit(event, "the output isn't ready");
+      }
+      if (event.request !== task.requests + 1) return misfit(event, "its request is out of order");
+      return ok({
+        ...task,
+        requests: event.request,
+        state: withLast(state, { ...state.step, kind: "delivering", request: event.request }),
+      });
+
+    case "output.failed":
+      if (state.phase === "triage" || state.step.kind !== "delivering") {
+        return misfit(event, "the task isn't delivering");
+      }
+      if (state.step.request !== event.request) return misfit(event, "it answers another request");
+      return ok({
+        ...task,
+        state: withLast(state, {
+          kind: "ready",
+          output: state.step.output,
+          critical: state.step.critical,
+        }),
+      });
+
+    case "output.delivered": {
+      if (state.phase === "triage" || state.step.kind !== "delivering") {
+        return misfit(event, "the task isn't delivering");
+      }
+      if (state.step.request !== event.request) return misfit(event, "it answers another request");
+      const work = state.phase === "review" ? state.handover.work : undefined;
+      const proposals = work?.kind === "report" ? work.proposals : [];
+      return end(task, state, { kind: "done", output: state.step.output }, proposals);
+    }
+
     case "progress.reported":
       if (step.kind !== "running" || step.session !== event.session) {
         return misfit(event, "that session isn't running");
@@ -264,6 +332,8 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       if (state.phase !== "build" || state.step.kind !== "stopping") {
         return misfit(event, "the builder isn't being stopped");
       }
+      if (state.step.handover !== undefined)
+        return misfit(event, "the work is already handed over");
       return ok({
         ...task,
         state: { ...state, step: { ...state.step, handover: event.handover } },
@@ -437,6 +507,11 @@ function holdsOf(state: ActiveState): Pick<ActiveState, "hold" | "lifted"> {
     ...(state.hold === undefined ? {} : { hold: state.hold }),
     ...(state.lifted === undefined ? {} : { lifted: state.lifted }),
   };
+}
+
+// Sets one of the last steps, which build and review share.
+function withLast(state: BuildState | ReviewState, step: LastStep): PhaseState {
+  return state.phase === "build" ? { ...state, step } : { ...state, step };
 }
 
 // Sets a step every phase has.

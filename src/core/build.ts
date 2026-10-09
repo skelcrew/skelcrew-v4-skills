@@ -1,6 +1,7 @@
 // The builder's inputs during build, and merging main.
 
 import { advance } from "./advance";
+import { outputOf, ready } from "./delivery";
 import type { Draft } from "./draft";
 import { stopAgent } from "./stop";
 import { type AgentInput, type BuildState, LOOP_CAP, type PluginInput } from "./types";
@@ -53,15 +54,19 @@ export function merged(draft: Draft, input: MergeReply): void {
       });
       if (before.phase !== "build" || before.step.kind !== "merging") return;
       const reviewed = { commit: input.commit, files: input.files };
+      const handover = before.step.handover;
       if (before.intent === "ship") {
-        draft.record({
-          type: "phase.started",
-          phase: "review",
-          handover: before.step.handover,
-          reviewed,
-        });
+        draft.record({ type: "phase.started", phase: "review", handover, reviewed });
         advance(draft);
+        return;
       }
+      if (before.workspace === undefined) return;
+      ready(
+        draft,
+        outputOf(before.workspace.branch, handover, reviewed),
+        input.files,
+        before.approve,
+      );
       return;
     }
     case "main_conflict": {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { evolve } from "./evolve";
 import {
   agent,
   daemon,
@@ -11,7 +12,7 @@ import {
   types,
   you,
 } from "./testing";
-import { LOOP_CAP } from "./types";
+import { type Event, LOOP_CAP } from "./types";
 
 // A ship task through build and the merge, with review just started:
 // workspace 1, builder 2, merge 3, then the tester's copy is request 4.
@@ -221,5 +222,36 @@ describe("after the tester's stop", () => {
       kind: "loop_cap",
       findings: "No test for empty reports",
     });
+  });
+});
+
+describe("found in review of the review part", () => {
+  const stamp: { v: 1; task: string; at: number } = { v: 1, task: "t1", at: 99 };
+
+  test("a start after a pass doesn't run review again", () => {
+    const run = more(testing(), [
+      pass(),
+      plugin({ kind: "session_stopped", session: 5, save: "nothing" }),
+      daemon({ kind: "start" }),
+    ]);
+    expect(refused(run.last)).toBe("task t1 isn't waiting for a slot");
+  });
+
+  test("replay refuses a second verdict for the same stop", () => {
+    const task = taskOf(more(testing(), [pass()]));
+    const second: Event = { ...stamp, type: "review.changes_requested", session: 5, findings: "x" };
+    expect(evolve(task, second).ok).toBe(false);
+  });
+
+  test("replay refuses a verdict from a session that isn't stopping", () => {
+    const task = taskOf(more(testing(), [pass()]));
+    const other: Event = { ...stamp, type: "review.passed", session: 2, evidence: "x" };
+    expect(evolve(task, other).ok).toBe(false);
+  });
+
+  test("replay refuses removing the task's workspace during review", () => {
+    const task = taskOf(testing());
+    const removed: Event = { ...stamp, type: "workspace.removed", request: 1 };
+    expect(evolve(task, removed).ok).toBe(false);
   });
 });

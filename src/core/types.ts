@@ -87,11 +87,14 @@ export type Running = { kind: "running"; session: number };
 export type EndReason = "reported" | "stopped" | "crashed";
 
 export type Stopping = { kind: "stopping"; session: number; reason: EndReason };
-export type AwaitingApproval = { kind: "awaiting_approval" };
-export type Delivering = { kind: "delivering"; request: number };
-// Ready to deliver, but held: the delivery failed, or the task was held
-// when it got here.
-export type Undelivered = { kind: "undelivered" };
+// The last steps carry the output to hand over, and whether its changes
+// touch a critical path.
+export type Last = { output: Output; critical: boolean };
+// The output waits to be delivered. A task is here only while it is held.
+export type Ready = Last & { kind: "ready" };
+export type AwaitingApproval = Last & { kind: "awaiting_approval" };
+export type Delivering = Last & { kind: "delivering"; request: number };
+export type LastStep = Ready | AwaitingApproval | Delivering;
 
 export type TriageStep =
   | Queued
@@ -109,9 +112,7 @@ export type BuildStep =
   | (Running & { intent: Intent })
   | (Stopping & { handover?: Handover })
   | { kind: "merging"; request: number; handover: Handover }
-  | (AwaitingApproval & { handover: Handover; reviewed: Reviewed })
-  | (Delivering & { handover: Handover; reviewed: Reviewed })
-  | (Undelivered & { handover: Handover; reviewed: Reviewed });
+  | LastStep;
 
 export type Verdict = { kind: "pass"; evidence: string } | { kind: "changes"; findings: string };
 
@@ -121,9 +122,7 @@ export type ReviewStep =
   | (Starting & { copy: Copy })
   | (Running & { copy: Copy })
   | (Stopping & { copy: Copy; verdict?: Verdict })
-  | (AwaitingApproval & { evidence: string })
-  | (Delivering & { evidence: string })
-  | (Undelivered & { evidence: string });
+  | LastStep;
 
 // --- Phases ---
 
@@ -354,12 +353,13 @@ export type Event = Stamp &
     | { type: "main.failed"; request: number; error: string }
     | { type: "review.passed"; session: number; evidence: string }
     | { type: "review.changes_requested"; session: number; findings: string }
+    | ({ type: "output.ready" } & Last)
     | { type: "approval.requested" }
     | { type: "approval.given" }
     | { type: "approval.denied"; note: string }
     | { type: "proposals.approved"; which: number[] }
     | { type: "proposals.denied"; which: number[] }
-    | { type: "output.requested"; request: number; output: Output }
+    | { type: "output.requested"; request: number }
     | { type: "output.delivered"; request: number }
     | { type: "output.failed"; request: number; error: string }
     | { type: "task.held"; hold: Hold }

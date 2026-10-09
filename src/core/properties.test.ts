@@ -8,7 +8,7 @@ import fc from "fast-check";
 import { candidates, isBackward } from "./candidates";
 import { evolve } from "./evolve";
 import { heldPaths, holdsSession, runningSession } from "./task";
-import type { Config, Event, EventType, Input, Task } from "./types";
+import type { Config, Event, EventType, Input, Output, Task } from "./types";
 import { type Step, World } from "./world";
 
 const config: Config = { maxRunning: 2, critical: ["src/auth/**"], accounts: ["me"] };
@@ -94,6 +94,14 @@ function broken(world: World, step: Step): string | undefined {
       (c) => c.kind !== "remove_workspace" && c.kind !== "stop_session",
     );
     if (stray.length > 0) return `rule 5: an input with no events sent ${stray[0]?.kind}`;
+  }
+
+  // 6, 7, 8 and 9. What is delivered is exactly what passed review, and
+  // flagged or critical work waited for your sign-off.
+  for (const command of commands) {
+    if (command.kind !== "deliver_output") continue;
+    const problem = badDelivery(world, command.task, command.output, after);
+    if (problem !== undefined) return problem;
   }
 
   // 9. Intent sets hard limits.
@@ -216,6 +224,58 @@ function broken(world: World, step: Step): string | undefined {
   return undefined;
 }
 
+function badDelivery(
+  world: World,
+  id: string,
+  output: Output,
+  task: Task | undefined,
+): string | undefined {
+  const state = task?.state;
+  if (state === undefined || state.phase === "ended" || state.phase === "triage") {
+    return "rule 6: a delivery went out from outside build and review";
+  }
+  const log = world.log.get(id) ?? [];
+  const lastIndex = (type: EventType) => log.findLastIndex((event) => event.type === type);
+  if (state.intent === "try") {
+    if (output.kind !== "branch" || output.mergeable)
+      return "rule 9: a try was delivered as mergeable";
+  }
+  // The tester that passed last worked in a copy at the delivered commit.
+  if (state.phase === "review") {
+    if (output.commit !== state.reviewed.commit)
+      return "rule 6: the delivered commit isn't the reviewed one";
+    const pass = log.findLast((event) => event.type === "review.passed");
+    if (pass?.type !== "review.passed") return "rule 7: delivered without review.passed";
+    const tester = world.startOf(id, pass.session);
+    const copy = world.sent.find(
+      (c) =>
+        c.kind === "create_workspace" && c.task === id && tester?.path === `/w/${id}/${c.request}`,
+    );
+    if (copy?.kind !== "create_workspace" || copy.workspace.kind !== "copy") {
+      return "rule 7: the tester that passed had no copy";
+    }
+    if (copy.workspace.commit !== output.commit) return "rule 6: review checked another commit";
+  } else if (state.intent === "ship" || state.intent === "answer") {
+    return `rule 7: ${state.intent} was delivered from build`;
+  }
+  // 8. Sign-off after the last pass, or the last handover for try.
+  const merge = log.findLast((event) => event.type === "main.merged");
+  const files =
+    state.phase === "review"
+      ? state.reviewed.files
+      : merge?.type === "main.merged"
+        ? merge.files
+        : [];
+  const critical = files.some((file) =>
+    config.critical.some((pattern) => new Bun.Glob(pattern).match(file)),
+  );
+  if (state.approve || critical) {
+    const after = state.phase === "review" ? lastIndex("review.passed") : lastIndex("build.done");
+    if (lastIndex("approval.given") < after) return "rule 8: delivered without your sign-off";
+  }
+  return undefined;
+}
+
 function replay(events: Event[]): Task | undefined {
   let task: Task | undefined;
   for (const event of events) {
@@ -310,6 +370,13 @@ test("random runs reach every event built so far", () => {
     "main.failed",
     "review.passed",
     "review.changes_requested",
+    "output.ready",
+    "approval.requested",
+    "approval.given",
+    "approval.denied",
+    "output.requested",
+    "output.delivered",
+    "output.failed",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 });

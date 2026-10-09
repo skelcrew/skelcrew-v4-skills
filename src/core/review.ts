@@ -1,6 +1,7 @@
 // The tester's verdict, and what follows once the tester has stopped.
 
 import { advance } from "./advance";
+import { outputOf, ready } from "./delivery";
 import type { Draft } from "./draft";
 import { removeWorkspace, stopAgent } from "./stop";
 import { type AgentInput, LOOP_CAP, type ReviewState, type Verdict } from "./types";
@@ -39,7 +40,16 @@ export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
   if (state.phase !== "review" || state.step.kind !== "queued") return;
   const copy = state.step.copy;
   if (copy !== undefined) removeWorkspace(draft, copy.request, copy.path);
-  if (verdict?.kind === "pass") return; // Approval and delivery come in part 5.
+  if (verdict?.kind === "pass") {
+    const output = outputOf(
+      state.workspace.branch,
+      state.handover,
+      state.reviewed,
+      verdict.evidence,
+    );
+    ready(draft, output, state.reviewed.files, state.approve);
+    return;
+  }
   if (verdict?.kind === "changes") {
     const loops = state.loops + 1;
     draft.record({

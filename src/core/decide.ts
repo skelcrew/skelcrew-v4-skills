@@ -5,6 +5,7 @@
 
 import { advance } from "./advance";
 import { builderCall, merged } from "./build";
+import { approve, delivered, deny } from "./delivery";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
 import { decideProposals } from "./proposals";
@@ -40,9 +41,11 @@ import type {
 
 type Arrival = Extract<YouInput, { kind: "add" }> | Extract<PluginInput, { kind: "task_arrived" }>;
 
-export function decide(task: Task | undefined, input: Input, _config: Config): Decision {
+export function decide(task: Task | undefined, input: Input, config: Config): Decision {
   if (isArrival(input)) {
-    return task === undefined ? receive(input) : refuse(`task ${input.task} already exists`);
+    return task === undefined
+      ? receive(input, config)
+      : refuse(`task ${input.task} already exists`);
   }
   if (task === undefined) return refuse(`there is no task ${input.task}`);
   if (input.sender === "plugin" && input.kind === "outside_change") {
@@ -54,7 +57,7 @@ export function decide(task: Task | undefined, input: Input, _config: Config): D
     const late = lateReply(task, input);
     if (late !== undefined) return late;
   }
-  const draft = new Draft(task, input);
+  const draft = new Draft(task, input, config);
   const state = task.state;
   const refusal =
     state.phase === "ended" ? judgeEnded(draft, state, input) : judge(draft, state, input);
@@ -106,11 +109,15 @@ function judge(draft: Draft, state: ActiveState, input: Input): string | undefin
   }
 }
 
-function fromYou(draft: Draft, _state: ActiveState, input: YouInput): string | undefined {
+function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | undefined {
   switch (input.kind) {
     case "approve_proposals":
     case "deny_proposals":
       return `task ${draft.task.id} has no proposals until it ends`;
+    case "approve":
+      return approve(draft, state);
+    case "deny":
+      return deny(draft, state, input.note);
     default:
       return "not built yet";
   }
@@ -171,6 +178,10 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
     case "main_failed":
       merged(draft, input);
       return undefined;
+    case "output_delivered":
+    case "output_failed":
+      delivered(draft, input);
+      return undefined;
     case "session_ended":
       // The stop in flight will answer for this session.
       if (stoppingSession(draft.task) === input.session) return undefined;
@@ -187,7 +198,7 @@ function isArrival(input: Input): input is Arrival {
   );
 }
 
-function receive(input: Arrival): Decision {
+function receive(input: Arrival, config: Config): Decision {
   const source: Source = input.sender === "you" ? { kind: "local", id: input.task } : input.source;
   const overrides = input.sender === "you" ? settingsOf(input) : {};
   const received = stamp(
@@ -202,7 +213,7 @@ function receive(input: Arrival): Decision {
   );
   const created = evolve(undefined, received);
   if (!created.ok) return refuse(`the core made a mistake: ${created.reason}`);
-  const draft = new Draft(created.task, input, [received]);
+  const draft = new Draft(created.task, input, config, [received]);
   if (overrides.intent !== undefined && overrides.rigor !== undefined) {
     draft.record({
       type: "phase.started",

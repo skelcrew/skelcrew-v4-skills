@@ -661,3 +661,63 @@ keeps its slot. A queued review task that isn't held asks for what comes next:
   conflict also counts, as part 3 says. A denial doesn't.
 
 **Stories this part reaches:** story 1 up to the pass, story 2's changes, and story 8.
+
+### Part 5: approval and delivery
+
+These are the last steps of review, or of build for `try`. Writing them down showed that the
+types from part 1 didn't hold what they need. They now hold the output itself.
+
+**Types**
+
+- **The output is fixed when the task is ready to hand it over.** It names the exact commit
+  to deliver. For `ship` it is the branch at the reviewed commit, mergeable, with the
+  summary and the tester's evidence. For `try` it is the same, never mergeable and with no
+  evidence. For `answer` it is the report at the reviewed commit, with the evidence.
+- **Three last steps carry the output, and whether the changed files touch a critical path:**
+  - **ready**: the output waits to be delivered. A task is here only while it is held,
+    since otherwise delivery starts at once. This replaces part 1's "undelivered".
+  - **awaiting approval**: the output waits for your sign-off.
+  - **delivering**: the output is being handed over.
+- **Build and review share these steps.** Part 1 gave build's versions the handed-over work
+  and reviewed commit instead. The output holds what they were for.
+
+**New event:** `output.ready` puts the output in the ready step. It is recorded when the
+task first gets there, and when you clear an approval it no longer needs.
+
+**Getting there.** After a pass, once the tester's copy is gone, or after a `try` merge:
+
+1. `output.ready` with the output.
+2. If the task has the approval flag, or its changed files touch a critical path:
+   `approval.requested`.
+3. Otherwise, unless the task is held: `output.requested` and a deliver output command.
+
+The changed files are the reviewed commit's, which are everything the branch changed since
+it left main. Each is matched against every `critical` glob in config.
+
+**The table.**
+
+| Step | Input | Result |
+|---|---|---|
+| awaiting approval | approve | `approval.given`, which makes the output ready. Then delivery, unless held. |
+| awaiting approval | deny | refused with an empty note. Otherwise `approval.denied`, then `phase.started` for build with your note for the next builder. The task is queued, since awaiting approval held no slot. The loop count stays. |
+| delivering | output delivered | `output.delivered`: the task ends as done. Then `workspace.removed` and a remove command that keeps the branch, unless the workspace is unsaved. An answer's proposals wait for your decisions. |
+| delivering | output failed | `output.failed`: the output is ready again. Then held as a failed delivery. |
+| any other step | approve, deny | refused: the task isn't waiting for your approval |
+| ended | approve, deny | refused: the task has ended |
+| ready | lifting the hold | delivery, see part 6 |
+| any | set approval | part 9 |
+| any | other replies | late |
+
+**Decisions**
+
+- **Delivery holds no slot.** No agent runs during it, as with awaiting approval.
+- **A denial moves the task back to build even for `try`**, which was already in build.
+  `phase.started` for build then starts build afresh, with your note.
+- **The worktree is removed once delivery is confirmed, and the branch is kept.** The work
+  lives on the branch or in the PR. The worktree would otherwise stay forever.
+- **The critical paths are checked when the output is ready.** Config read then decides.
+  A change to config later doesn't reopen a task already waiting.
+- **The approval check uses the reviewed commit's files** for every intent, including
+  `answer`, whose reviewed commit is the handed-over one.
+
+**Stories this part reaches:** stories 1, 2 and 6 in full.

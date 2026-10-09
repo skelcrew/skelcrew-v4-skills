@@ -2,7 +2,7 @@
 // recorded, so the next step of the decision reads the task as it now is.
 
 import { evolve } from "./evolve";
-import type { Command, Decision, Event, Input, Task } from "./types";
+import type { Command, Config, Decision, Event, Input, Task } from "./types";
 
 type Without<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type EventBody = Without<Event, "v" | "task" | "at">;
@@ -15,6 +15,7 @@ export class Draft {
   constructor(
     public task: Task,
     private readonly input: Input,
+    readonly config: Config,
     first: Event[] = [],
   ) {
     this.events.push(...first);
