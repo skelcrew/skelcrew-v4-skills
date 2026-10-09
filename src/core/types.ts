@@ -96,8 +96,16 @@ export type Running = { kind: "running"; session: number };
 export type EndReason = "reported" | "stopped" | "crashed";
 
 // `save` says whether the stop saves the agent's work. Only then does its
-// reply say anything about the workspace.
-export type Stopping = { kind: "stopping"; session: number; reason: EndReason; save: boolean };
+// reply say anything about the workspace. `slot` says whether the task held
+// a slot for work when its agent was let go. A stop always holds a slot,
+// but one that took it only to clean up gives it back to the scheduler.
+export type Stopping = {
+  kind: "stopping";
+  session: number;
+  reason: EndReason;
+  save: boolean;
+  slot: boolean;
+};
 // The last steps carry the output to hand over, whether its changes touch
 // a critical path, and whether you have signed it off.
 export type Last = { output: Output; critical: boolean; signed: boolean };
@@ -348,7 +356,13 @@ export type Event = Stamp &
     | { type: "session.requested"; request: number; role: Role; edits: boolean }
     | { type: "session.started"; session: number; harnessId: string }
     | { type: "session.failed"; request: number; error: string }
-    | { type: "session.stopping"; session: number; save: boolean; reason: EndReason }
+    | {
+        type: "session.stopping";
+        session: number;
+        save: boolean;
+        reason: EndReason;
+        slot: boolean;
+      }
     | { type: "session.ended"; session: number; reason: EndReason; save: SaveResult }
     | { type: "question.asked"; number: number; session: number; text: string; options: string[] }
     | { type: "question.answered"; answer: Answer }

@@ -218,6 +218,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         session: event.session,
         reason: event.reason,
         save: event.save,
+        slot: event.slot,
       };
       switch (rest.phase) {
         case "triage":

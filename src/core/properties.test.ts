@@ -407,6 +407,29 @@ function slotsBroken(world: World, step: Step, before: Set<string>): string | un
   return `rule 10: ${after} slots in use after ${input.sender} ${input.kind}, past ${config.maxRunning}`;
 }
 
+// 10, the other half. New work starts only with a slot the task held for
+// work, or one the scheduler or your start just gave it. A stop that took
+// a slot only to clean up never starts new work.
+function workBroken(step: Step): string | undefined {
+  const { input, before, decision } = step;
+  if (!decision.ok || before === undefined) return undefined;
+  const given =
+    (input.sender === "daemon" && (input.kind === "start" || input.kind === "deliver_answer")) ||
+    (input.sender === "you" && input.kind === "start");
+  if (given || heldForWork(before)) return undefined;
+  const work = decision.commands.filter((c) =>
+    ["create_workspace", "start_session", "merge_main"].includes(c.kind),
+  );
+  if (work.length === 0) return undefined;
+  return `rule 10: ${input.sender} ${input.kind} started ${work[0]?.kind} without a slot`;
+}
+
+function heldForWork(task: Task): boolean {
+  const state = task.state;
+  if (state.phase !== "ended" && state.step.kind === "stopping") return state.step.slot;
+  return holdsSlot(task);
+}
+
 // 21. Usage never goes down.
 function usageOf(world: World): Map<string, number> {
   const totals = new Map<string, number>();
@@ -455,18 +478,18 @@ const steps: Record<string, Shape> = {
   "triage creating_workspace": [["kind", "request"], []],
   "triage starting": [["kind", "request"], []],
   "triage running": [["kind", "session"], []],
-  "triage stopping": [["kind", "session", "reason", "save"], ["proceed"]],
+  "triage stopping": [["kind", "session", "reason", "save", "slot"], ["proceed"]],
   "build queued": [["kind"], ["handover"]],
   "build creating_workspace": [["kind", "request"], []],
   "build starting": [["kind", "request", "intent"], []],
   "build running": [["kind", "session", "intent"], []],
-  "build stopping": [["kind", "session", "reason", "save"], ["handover"]],
+  "build stopping": [["kind", "session", "reason", "save", "slot"], ["handover"]],
   "build merging": [["kind", "request", "handover"], []],
   "review queued": [["kind"], ["copy"]],
   "review creating_workspace": [["kind", "request"], []],
   "review starting": [["kind", "request", "copy"], []],
   "review running": [["kind", "session", "copy"], []],
-  "review stopping": [["kind", "session", "reason", "save", "copy"], ["verdict"]],
+  "review stopping": [["kind", "session", "reason", "save", "slot", "copy"], ["verdict"]],
 };
 for (const phase of ["build", "review"]) {
   steps[`${phase} ready`] = last;
@@ -536,6 +559,7 @@ function run(choices: number[], seen?: Set<EventType>): string | undefined {
       broken(world, step) ??
       slotsBroken(world, step, slotsBefore) ??
       usageBroken(world, usageBefore) ??
+      workBroken(step) ??
       shapeBroken(world);
     if (problem !== undefined) {
       return `step ${i / 2}, ${input.sender} ${input.kind}: ${problem}\n${trail.slice(-12).join("\n")}`;

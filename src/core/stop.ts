@@ -3,6 +3,7 @@
 import { settled } from "./advance";
 import type { Draft } from "./draft";
 import { afterTester } from "./review";
+import { holdsSlot } from "./schedule";
 import type { EndReason, PluginInput, Spec } from "./types";
 
 type Stopped = Extract<PluginInput, { kind: "session_stopped" }>;
@@ -15,7 +16,8 @@ export function stopAgent(
   save: boolean,
   write?: Spec,
 ): void {
-  draft.record({ type: "session.stopping", session, save, reason });
+  const slot = holdsSlot(draft.task);
+  draft.record({ type: "session.stopping", session, save, reason, slot });
   draft.send({
     kind: "stop_session",
     task: draft.task.id,
@@ -64,11 +66,14 @@ export function stopped(draft: Draft, input: Stopped): void {
       ...(workspace === undefined ? {} : { workspace }),
     });
   }
+  // A stop that took a slot only to clean up leaves the task for the
+  // scheduler. Otherwise the task keeps its slot and moves on.
+  const keepsSlot = before.step.slot;
   if (before.phase === "review" && before.step.kind === "stopping") {
-    afterTester(draft, before.step.verdict);
+    afterTester(draft, before.step.verdict, keepsSlot);
     return;
   }
-  settled(draft);
+  if (keepsSlot) settled(draft);
 }
 
 // An ended task's last agent has stopped. What it ran in is removed now,

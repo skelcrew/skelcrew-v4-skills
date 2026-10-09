@@ -204,3 +204,72 @@ describe("usage", () => {
     expect(types(run.events).at(-1)).toBe("usage.reported");
   });
 });
+
+describe("found in review of the scheduler", () => {
+  // t1 asks, so it holds no slot. The scheduler then fills both slots.
+  const full = () => {
+    let run = startBuilder(play([add("t1"), add("t2"), add("t3")]), "t1");
+    run = more(run, [agent({ session: 2, role: "builder", kind: "ask", text: "?", options: [] })]);
+    run = startBuilder(run, "t2");
+    return startBuilder(run, "t3");
+  };
+
+  test("a stop that took a slot only to clean up doesn't start new work past the limit", () => {
+    const run = more(full(), [
+      you({ kind: "set", intent: "try" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+    ]);
+    expect(run.commands.filter((c) => c.kind === "start_session")).toEqual([]);
+    expect(slotsInUse(tasksOf(run))).toBe(2);
+    const state = taskOf(run).state;
+    expect(state.phase === "build" && state.step.kind).toBe("queued");
+  });
+
+  test("a crash, then a retry while the stop is in flight, waits for the scheduler too", () => {
+    const run = more(full(), [
+      plugin({ kind: "session_ended", session: 2, exitCode: 1, lastLine: "panic" }),
+      you({ kind: "retry" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+    ]);
+    expect(run.commands.filter((c) => c.kind === "start_session")).toEqual([]);
+    expect(slotsInUse(tasksOf(run))).toBe(2);
+  });
+
+  test("a stop that kept its slot moves straight on, as before", () => {
+    const run = more(startBuilder(play([add("t1")]), "t1"), [
+      you({ kind: "set", intent: "try" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+    ]);
+    expect(run.commands.map((c) => c.kind)).toEqual(["stop_session", "start_session"]);
+  });
+
+  const usage = { input: 10, output: 5, cacheWrite: 3, cacheRead: 100, minutes: 4 };
+
+  test.each(["input", "output", "cacheWrite", "cacheRead", "minutes"] as const)(
+    "a report with lower %s is refused",
+    (field) => {
+      const run = more(startBuilder(play([add("t1")]), "t1"), [
+        daemon({ kind: "usage", session: 2, usage }),
+        daemon({ kind: "usage", session: 2, usage: { ...usage, [field]: usage[field] - 1 } }),
+      ]);
+      expect(refused(run.last)).toBe("usage for session 2 went down, so this report is older");
+    },
+  );
+
+  test("a task's usage sums every field over all its sessions", () => {
+    const run = more(startBuilder(play([add("t1")]), "t1"), [
+      daemon({ kind: "usage", session: 2, usage }),
+      you({ kind: "set", intent: "try" }),
+      plugin({ kind: "session_stopped", session: 2, save: "saved" }),
+      plugin({ kind: "session_started", request: 3, harnessId: "h3" }),
+      daemon({ kind: "usage", session: 3, usage }),
+    ]);
+    expect(taskUsage(taskOf(run))).toEqual({
+      input: 20,
+      output: 10,
+      cacheWrite: 6,
+      cacheRead: 200,
+      minutes: 8,
+    });
+  });
+});

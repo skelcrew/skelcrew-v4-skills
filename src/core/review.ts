@@ -35,7 +35,7 @@ export function testerCall(
 
 // The tester has stopped. Its copy goes, then the verdict decides what
 // comes next. `verdict` is read from the step before the stop ended.
-export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
+export function afterTester(draft: Draft, verdict: Verdict | undefined, keepsSlot: boolean): void {
   const state = draft.task.state;
   if (state.phase !== "review" || state.step.kind !== "queued") return;
   const copy = state.step.copy;
@@ -43,7 +43,7 @@ export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
   if (isStale(state)) {
     // Your change of intent sets this review aside, whatever its verdict.
     backToBuild(draft, state);
-    advance(draft);
+    if (keepsSlot) advance(draft);
     return;
   }
   if (verdict?.kind === "pass") {
@@ -63,5 +63,5 @@ export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
       draft.record({ type: "task.held", hold: { kind: "loop_cap", findings: verdict.findings } });
     }
   }
-  advance(draft);
+  if (keepsSlot) advance(draft);
 }

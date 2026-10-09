@@ -140,6 +140,7 @@ describe("failures", () => {
       session: 2,
       reason: "crashed",
       save: true,
+      slot: false,
     });
   });
 

@@ -171,6 +171,7 @@ describe("the planner proceeds", () => {
       session: 2,
       reason: "reported",
       save: true,
+      slot: true,
       proceed: {
         intent: "ship",
         rigor: "full",

@@ -1018,3 +1018,17 @@ goes out at once. A stop is cleanup, not putting an agent to work.
   retry.
 - **A task carries exactly its phase's and step's fields.** The property tests check this
   after every step, since v3 once carried old fields into a new phase.
+
+**Found in review of part 10, and decided**
+
+- **A stop records whether the task held a slot for work when its agent was let go.** A stop
+  always holds a slot while in flight. But an agent waiting on your answer, or a held one,
+  had given its slot up. If its stop then let the task move straight on, it would start new
+  work in a slot the scheduler never gave it. With `max_running` at 2, a change of intent on
+  a task waiting for your answer once put three agents to work. Now such a stop ends with
+  the task queued for the scheduler. A stop that kept its slot moves straight on, as before.
+- **A retry or resume during a stop waits for the scheduler.** The hold made the stop one
+  that took no slot for work, so the task joins the front of the queue, as the spec says.
+- **The property tests check rule 10 both ways.** The slots in use stay within the limit,
+  as before. And new work, meaning a workspace, a session or a merge, starts only with a slot
+  the task held for work, or one the scheduler or your start just gave it.
