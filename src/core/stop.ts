@@ -41,7 +41,11 @@ export function stopped(draft: Draft, input: Stopped): void {
     save: input.save,
   });
   if (input.save === "failed" && before.step.save) {
-    draft.record({ type: "task.held", hold: { kind: "unsaved" } });
+    const after = before.hold;
+    draft.record({
+      type: "task.held",
+      hold: { kind: "unsaved", ...(after === undefined ? {} : { after }) },
+    });
   }
   const after = draft.task.state;
   if (before.phase === "triage" && "proceed" in before.step && before.step.proceed !== undefined) {

@@ -125,6 +125,8 @@ export function holdText(hold: Hold): string {
     case "failed":
       return failedWhat[hold.what];
     case "unsaved":
-      return "its work couldn't be saved";
+      return hold.after === undefined
+        ? "its work couldn't be saved"
+        : `its work couldn't be saved, after ${holdText(hold.after)}`;
   }
 }

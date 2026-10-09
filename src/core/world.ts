@@ -48,6 +48,7 @@ export class World {
   // Every reply a tool could give, in the order offered.
   readonly replies: Reply[] = [];
   private readonly stopsSent = new Set<string>();
+  private readonly savingStops = new Set<string>();
   // The outcome each request got, by `task:group:number`. A tool may repeat
   // an outcome, but never contradicts it: a start that failed never also
   // starts.
@@ -137,7 +138,8 @@ export class World {
         this.gone.add(key);
         this.sessions.delete(key);
         const start = this.startOf(input.task, input.session);
-        if (start === undefined || start.role === "tester") return;
+        // Only a stop that saves touches the workspace's work.
+        if (start === undefined || !this.savingStops.has(key)) return;
         if (input.save === "failed") this.unsaved.add(start.path);
         else this.unsaved.delete(start.path);
         return;
@@ -181,6 +183,7 @@ export class World {
       case "stop_session": {
         const key = `${task}:${command.session}`;
         this.stopsSent.add(key);
+        if (command.save) this.savingStops.add(key);
         const session = this.sessions.get(key);
         if (session !== undefined) session.stopped = true;
         for (const save of command.save ? saves : unsavable) {

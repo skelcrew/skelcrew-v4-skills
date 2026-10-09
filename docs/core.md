@@ -323,7 +323,9 @@ The types live in `src/core/types.ts`. This part says what they hold and why.
   cap (the findings), a failed workspace, session, merge or delivery (the error), or work
   that couldn't be saved.
 - **A new hold replaces an old one.** A paused task whose stop then fails to save is held as
-  unsaved, so it shows as waiting on you.
+  unsaved, so it shows as waiting on you. The unsaved hold keeps the hold it replaced, so a
+  crash or giving up whose stop failed to save still says why the agent stopped. (Changed
+  after review of part 6, which found the crash's exit code lost.)
 - **A held task sends no new request.** No workspace, session, merge or delivery starts while
   it is held. Stops and removals still go out, since they only clean up.
 - **The hold last lifted is kept until the next session starts.** The scheduler reads it to
@@ -775,6 +777,9 @@ above.
 - **A crash before the start reply is still a crash.** The task waits on that start, so the
   session is its agent. The stop goes out at once, and the late start reply is then ignored,
   since the task already holds that session.
+- **Kill doesn't wait for a merge in flight.** The worktree is removed while git may still
+  be merging in it. Nothing is lost, since the builder's stop saved its work before the
+  merge, and the branch stays.
 - **Kill doesn't stop a delivery in flight.** If it is confirmed after the kill, nothing more
   happens, and the log shows the task as killed. You see it in the output's own tool. This
   is a known gap: the log doesn't record a delivery confirmed after a kill.

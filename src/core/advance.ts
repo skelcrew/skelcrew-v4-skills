@@ -11,6 +11,7 @@ import type {
   Handover,
   ReviewState,
   Role,
+  TriageState,
   Workspace,
   WorkspaceRequest,
 } from "./types";
@@ -23,7 +24,7 @@ export function advance(draft: Draft): void {
       if (state.workspace === undefined) {
         requestWorkspace(draft, { kind: "task", branch: branchName(draft.task) });
       } else {
-        requestPlanner(draft, state.workspace);
+        requestPlanner(draft, state, state.workspace);
       }
       return;
     case "build":
@@ -97,7 +98,7 @@ function requestWorkspace(draft: Draft, workspace: WorkspaceRequest): void {
   draft.send({ kind: "create_workspace", task: draft.task.id, request, workspace });
 }
 
-function requestPlanner(draft: Draft, workspace: Workspace): void {
+function requestPlanner(draft: Draft, state: TriageState, workspace: Workspace): void {
   const request = draft.nextRequest();
   recordSession(draft, request, "planner", false);
   draft.send({
@@ -108,6 +109,7 @@ function requestPlanner(draft: Draft, workspace: Workspace): void {
     path: workspace.path,
     edits: false,
     brief: plainBrief(draft.task),
+    ...(state.lifted === undefined ? {} : { back: state.lifted }),
   });
 }
 

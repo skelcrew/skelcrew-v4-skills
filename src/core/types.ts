@@ -67,7 +67,9 @@ export type Hold =
   | { kind: "gave_up"; reason: string }
   | { kind: "loop_cap"; findings: string }
   | { kind: "failed"; what: "workspace" | "session" | "merge" | "delivery"; error: string }
-  | { kind: "unsaved" };
+  // Its work couldn't be saved. `after` is the hold this replaced, such as
+  // the crash whose stop failed to save, so its reason isn't lost.
+  | { kind: "unsaved"; after?: Hold };
 
 export type Answer = { text: string; by: { kind: "you" } | { kind: "tracker"; account: string } };
 

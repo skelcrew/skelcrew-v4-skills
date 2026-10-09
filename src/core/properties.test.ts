@@ -202,6 +202,29 @@ function broken(world: World, step: Step): string | undefined {
     }
   }
 
+  // 19. A session that ends without reporting holds the task, with its
+  // exit code and last line. Giving up holds it with the reason.
+  const afterState = after?.state;
+  if (
+    decision.ok &&
+    events.length > 0 &&
+    afterState !== undefined &&
+    afterState.phase !== "ended"
+  ) {
+    const hold = afterState.hold;
+    if (input.sender === "plugin" && input.kind === "session_ended") {
+      const exitCode = input.exitCode === undefined ? {} : { exitCode: input.exitCode };
+      if (!Bun.deepEquals(hold, { kind: "crashed", ...exitCode, lastLine: input.lastLine })) {
+        return "rule 19: a crash didn't hold the task with its exit code and last line";
+      }
+    }
+    if (input.sender === "agent" && input.kind === "give_up") {
+      if (!Bun.deepEquals(hold, { kind: "gave_up", reason: input.reason })) {
+        return "rule 12: giving up didn't hold the task with the reason";
+      }
+    }
+  }
+
   // 14. No workspace or session is left untracked, both ways.
   for (const [path, owner] of world.workspaces) {
     const task = world.tasks.get(owner);

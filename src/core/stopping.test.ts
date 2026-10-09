@@ -197,7 +197,7 @@ describe("failures", () => {
     const run = more(building(), [you({ kind: "pause" }), stopped("failed")]);
     const state = stateOf(run);
     expect(state.phase === "build" && [state.hold, state.workspace?.unsaved]).toEqual([
-      { kind: "unsaved" },
+      { kind: "unsaved", after: { kind: "paused" } },
       true,
     ]);
   });
@@ -357,5 +357,65 @@ describe("only a stop that saves says anything about saving", () => {
     expect(state.phase === "review" && state.step.kind).toBe("ready");
     const resumed = more(paused, [you({ kind: "resume" })]);
     expect(resumed.commands.map((c) => c.kind)).toEqual(["deliver_output"]);
+  });
+});
+
+describe("found in review of stopping", () => {
+  test("a failed save keeps the crash it follows, and says both", () => {
+    const run = more(building(), [
+      plugin({ kind: "session_ended", session: 2, exitCode: 137, lastLine: "Killed" }),
+      stopped("failed"),
+      daemon({ kind: "start" }),
+    ]);
+    expect(refused(run.last)).toBe(
+      "task t1 is held: its work couldn't be saved, after its session crashed with exit code 137: Killed",
+    );
+    const state = stateOf(run);
+    expect(state.phase === "build" && state.hold).toEqual({
+      kind: "unsaved",
+      after: { kind: "crashed", exitCode: 137, lastLine: "Killed" },
+    });
+  });
+
+  test("a planner started again after a pause is told why it is back", () => {
+    const run = play([
+      you({ kind: "add", title: "Fix", description: "" }),
+      daemon({ kind: "start" }),
+      plugin({ kind: "workspace_created", request: 1, path: "/w/t1" }),
+      plugin({ kind: "session_started", request: 2, harnessId: "h2" }),
+      you({ kind: "pause" }),
+      plugin({ kind: "session_stopped", session: 2, save: "nothing" }),
+      you({ kind: "resume" }),
+      daemon({ kind: "start" }),
+    ]);
+    expect(run.commands.at(-1)).toMatchObject({
+      kind: "start_session",
+      role: "planner",
+      back: { kind: "paused" },
+    });
+  });
+
+  test("killing a task in review removes its workspace at once, and the copy after the stop", () => {
+    const reviewing = more(building(), [
+      agent({
+        session: 2,
+        role: "builder",
+        kind: "done",
+        commit: "c1",
+        files: [],
+        work: { kind: "summary", text: "x" },
+      }),
+      stopped(),
+      plugin({ kind: "main_merged", request: 3, commit: "m3", files: [] }),
+      plugin({ kind: "workspace_created", request: 4, path: "/w/copy" }),
+      plugin({ kind: "session_started", request: 5, harnessId: "h5" }),
+    ]);
+    const killed = more(reviewing, [you({ kind: "kill" })]);
+    expect(killed.commands).toEqual([
+      { kind: "stop_session", task: "t1", session: 5, save: false },
+      { kind: "remove_workspace", task: "t1", path: "/w/t1" },
+    ]);
+    const after = more(killed, [stopped("nothing", 5)]);
+    expect(after.commands).toEqual([{ kind: "remove_workspace", task: "t1", path: "/w/copy" }]);
   });
 });
