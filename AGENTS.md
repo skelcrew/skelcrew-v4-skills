@@ -4,6 +4,19 @@ Skelcrew runs coding agents in parallel, always on and unattended. You make deci
 don't supervise. The design is in `docs/spec.md`. Read it before changing anything it
 covers. What earlier versions taught us is in `docs/learnings.md`.
 
+## This branch is an experiment
+
+You build the core alone, from the docs, and the human reviews the result at the end. So
+for this branch only:
+
+- The human does not approve the types, read the tests or read each diff as you go. Make
+  those calls yourself, and record each one you had to make in `docs/core.md`, under
+  "Decisions made while building the core".
+- Commit to this branch. Never push and never open a pull request.
+
+Every other rule below still holds, including test first and `bun run check` on every
+commit.
+
 ## Hard constraints
 
 These are correctness requirements, not preferences. A change that breaks one is wrong even
