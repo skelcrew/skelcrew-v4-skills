@@ -3,7 +3,7 @@
 
 import type { Draft } from "./draft";
 import { branchName, plainBrief } from "./task";
-import type { Role, Workspace, WorkspaceRequest } from "./types";
+import type { BuildState, Role, Workspace, WorkspaceRequest } from "./types";
 
 export function advance(draft: Draft): void {
   const state = draft.task.state;
@@ -16,9 +16,37 @@ export function advance(draft: Draft): void {
         requestPlanner(draft, state.workspace);
       }
       return;
+    case "build":
+      if (state.workspace === undefined) {
+        requestWorkspace(draft, { kind: "task", branch: branchName(draft.task) });
+      } else {
+        requestBuilder(draft, state, state.workspace);
+      }
+      return;
     default:
       return;
   }
+}
+
+function requestBuilder(draft: Draft, state: BuildState, workspace: Workspace): void {
+  const request = draft.nextRequest();
+  const edits = state.intent !== "answer";
+  const back = state.lifted;
+  recordSession(draft, request, "builder", edits);
+  draft.send({
+    kind: "start_session",
+    task: draft.task.id,
+    request,
+    role: "builder",
+    path: workspace.path,
+    edits,
+    intent: state.intent,
+    rigor: state.rigor,
+    brief: state.brief,
+    ...(state.spec === undefined ? {} : { spec: state.spec }),
+    ...(state.handback === undefined ? {} : { handback: state.handback }),
+    ...(back === undefined ? {} : { back }),
+  });
 }
 
 function requestWorkspace(draft: Draft, workspace: WorkspaceRequest): void {

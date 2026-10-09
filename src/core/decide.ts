@@ -6,6 +6,7 @@
 import { advance } from "./advance";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
+import { stopped } from "./stop";
 import {
   heldPaths,
   heldWorkspaces,
@@ -18,6 +19,7 @@ import {
   stoppingSession,
   waitsOn,
 } from "./task";
+import { triageCall } from "./triage";
 import type {
   ActiveState,
   AgentInput,
@@ -84,11 +86,20 @@ function judgeEnded(draft: Draft, _state: EndedState, input: Input): string | un
 function judge(draft: Draft, state: ActiveState, input: Input): string | undefined {
   switch (input.sender) {
     case "agent":
-      return notTheAgent(draft.task, input) ?? "not built yet";
+      return notTheAgent(draft.task, input) ?? fromAgent(draft, state, input);
     case "daemon":
       return fromDaemon(draft, state, input);
     case "plugin":
       return reply(draft, input);
+    default:
+      return "not built yet";
+  }
+}
+
+function fromAgent(draft: Draft, state: ActiveState, input: AgentInput): string | undefined {
+  switch (state.phase) {
+    case "triage":
+      return triageCall(draft, state, input);
     default:
       return "not built yet";
   }
@@ -130,6 +141,13 @@ function reply(draft: Draft, input: PluginInput): string | undefined {
         hold: { kind: "failed", what: "session", error: input.error },
       });
       return undefined;
+    case "session_stopped":
+      stopped(draft, input);
+      return undefined;
+    case "session_ended":
+      // The stop in flight will answer for this session.
+      if (stoppingSession(draft.task) === input.session) return undefined;
+      return "not built yet";
     default:
       return "not built yet";
   }

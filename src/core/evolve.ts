@@ -4,7 +4,16 @@
 // rebuilding a wrong task.
 
 import { branchName, phaseRole } from "./task";
-import type { ActiveState, Event, Evolved, PhaseState, Task } from "./types";
+import type {
+  ActiveState,
+  Event,
+  Evolved,
+  PhaseState,
+  SaveResult,
+  Stopping,
+  Task,
+  Workspace,
+} from "./types";
 
 const noUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, minutes: 0 };
 
@@ -56,6 +65,70 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           attached: false,
         },
       });
+    }
+
+    case "session.stopping": {
+      if (step.kind !== "running" || step.session !== event.session) {
+        return misfit(event, "that session isn't running");
+      }
+      // The agent is let go, so its question and your attachment go too.
+      const { question: _, ...rest } = state;
+      const stopping: Stopping = { kind: "stopping", session: event.session, reason: event.reason };
+      switch (rest.phase) {
+        case "triage":
+          return ok({ ...task, state: { ...rest, attached: false, step: stopping } });
+        case "build":
+          return ok({ ...task, state: { ...rest, attached: false, step: stopping } });
+        case "review":
+          if (rest.step.kind !== "running") return misfit(event, "unreachable");
+          return ok({
+            ...task,
+            state: { ...rest, attached: false, step: { ...stopping, copy: rest.step.copy } },
+          });
+      }
+      return misfit(event, "unknown phase");
+    }
+
+    case "task.triaged": {
+      if (state.phase !== "triage" || state.step.kind !== "stopping") {
+        return misfit(event, "the planner isn't being stopped");
+      }
+      const outcome = event.outcome;
+      if (outcome.kind === "proceed") {
+        const { kind: _, ...proceed } = outcome;
+        return ok({ ...task, state: { ...state, step: { ...state.step, proceed } } });
+      }
+      return misfit(event, "not built yet");
+    }
+
+    case "session.ended": {
+      if (step.kind !== "stopping" || step.session !== event.session) {
+        return misfit(event, "that session isn't being stopped");
+      }
+      switch (state.phase) {
+        case "triage":
+          return ok({
+            ...task,
+            state: { ...savedIn(state, event.save), step: { kind: "queued" } },
+          });
+        case "build": {
+          const handover =
+            state.step.kind === "stopping" && state.step.handover !== undefined
+              ? { handover: state.step.handover }
+              : {};
+          return ok({
+            ...task,
+            state: { ...savedIn(state, event.save), step: { kind: "queued", ...handover } },
+          });
+        }
+        case "review":
+          if (state.step.kind !== "stopping") return misfit(event, "unreachable");
+          return ok({
+            ...task,
+            state: { ...state, step: { kind: "queued", copy: state.step.copy } },
+          });
+      }
+      return misfit(event, "unknown phase");
     }
 
     case "task.held":
@@ -170,6 +243,13 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
     default:
       return misfit(event, "not built yet");
   }
+}
+
+// Records how a save in the task's workspace went. A failed save marks
+// it unsaved, and the next save that works clears the mark.
+function savedIn<S extends { workspace?: Workspace }>(state: S, save: SaveResult): S {
+  if (state.workspace === undefined) return state;
+  return { ...state, workspace: { ...state.workspace, unsaved: save === "failed" } };
 }
 
 // Sets a step every phase has.
