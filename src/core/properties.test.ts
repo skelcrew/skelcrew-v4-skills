@@ -8,7 +8,15 @@ import fc from "fast-check";
 import { candidates, isBackward } from "./candidates";
 import { evolve } from "./evolve";
 import { heldPaths, holdsSession, runningSession } from "./task";
-import type { Config, Event, EventType, Input, Output, Task } from "./types";
+import {
+  type Config,
+  type Event,
+  type EventType,
+  type Input,
+  LOOP_CAP,
+  type Output,
+  type Task,
+} from "./types";
 import { type Step, World } from "./world";
 
 const config: Config = { maxRunning: 2, critical: ["src/auth/**"], accounts: ["me"] };
@@ -102,6 +110,34 @@ function broken(world: World, step: Step): string | undefined {
     if (command.kind !== "deliver_output") continue;
     const problem = badDelivery(world, command.task, command.output, after);
     if (problem !== undefined) return problem;
+  }
+
+  // 6. Review starts on the merged commit for ship, and on the handed-over
+  // one for answer.
+  for (const event of events) {
+    if (event.type !== "phase.started" || event.phase !== "review") continue;
+    const log = world.log.get(event.task) ?? [];
+    const merge = log.findLast((e) => e.type === "main.merged");
+    const expected =
+      event.handover.intent === "answer"
+        ? event.handover.commit
+        : merge?.type === "main.merged"
+          ? merge.commit
+          : undefined;
+    if (event.reviewed.commit !== expected) return "rule 6: review started on the wrong commit";
+  }
+
+  // 12. Reaching the loop cap holds the task.
+  if (after !== undefined && before !== undefined && after.state.phase !== "ended") {
+    const loops = (task: Task) =>
+      task.state.phase === "build" || task.state.phase === "review" ? task.state.loops : 0;
+    if (
+      loops(after) > loops(before) &&
+      loops(after) >= LOOP_CAP &&
+      after.state.hold === undefined
+    ) {
+      return "rule 12: the loop cap was reached without holding the task";
+    }
   }
 
   // 9. Intent sets hard limits.

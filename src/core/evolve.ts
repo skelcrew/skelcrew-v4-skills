@@ -124,6 +124,8 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         if (state.phase !== "build" || state.workspace === undefined) {
           return misfit(event, "review starts from build, with a workspace");
         }
+        if (state.step.kind !== "queued")
+          return misfit(event, `the build step is ${state.step.kind}`);
         return ok({
           ...task,
           state: {
@@ -142,6 +144,9 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
             ...holdsOf(state),
           },
         });
+      }
+      if (step.kind !== "queued" && step.kind !== "awaiting_approval") {
+        return misfit(event, `build can't start while the step is ${step.kind}`);
       }
       return ok({
         ...task,

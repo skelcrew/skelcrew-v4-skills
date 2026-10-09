@@ -143,7 +143,6 @@ export function isBackward(input: Input): boolean {
       "session_ended",
       "main_failed",
       "output_failed",
-      "main_conflict",
     ].includes(input.kind);
   }
   return false;

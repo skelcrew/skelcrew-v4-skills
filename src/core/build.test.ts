@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { evolve } from "./evolve";
 import { agent, daemon, more, play, plugin, refused, taskOf, types, you } from "./testing";
-import type { Intent, Work } from "./types";
+import type { Event, Intent, Work } from "./types";
 
 // A task added with intent and rigor, so triage is skipped, and its builder
 // at work: workspace from request 1, builder session 2.
@@ -237,5 +238,51 @@ describe("a merge that doesn't go through", () => {
       what: "merge",
       error: "index.lock",
     });
+  });
+});
+
+describe("found in review of build", () => {
+  const stamp: { v: 1; task: string; at: number } = { v: 1, task: "t1", at: 99 };
+
+  test("after conflicts reach the cap, the hold says why in plain words", () => {
+    let run = more(building(), [done(), stopped()]);
+    for (let round = 0; round < 3; round++) {
+      const request = taskOf(run).requests;
+      run = more(run, [plugin({ kind: "main_conflict", request })]);
+      if (round === 2) break;
+      run = more(run, [
+        plugin({ kind: "session_started", request: request + 1, harnessId: "h" }),
+        agent({
+          session: request + 1,
+          role: "builder",
+          kind: "done",
+          commit: "c",
+          files: [],
+          work: summary,
+        }),
+        stopped(request + 1),
+      ]);
+    }
+    run = more(run, [daemon({ kind: "start" })]);
+    expect(refused(run.last)).toBe(
+      "task t1 is held: the loop cap was reached: merging main conflicted",
+    );
+  });
+
+  test("replay refuses review starting while the builder still runs", () => {
+    const review: Event = {
+      ...stamp,
+      type: "phase.started",
+      phase: "review",
+      handover: { intent: "ship", commit: "c1", files: [], by: "builder", work: summary },
+      reviewed: { commit: "c1", files: [] },
+    };
+    expect(evolve(taskOf(building()), review).ok).toBe(false);
+  });
+
+  test("replay refuses a merge reply that answers another request", () => {
+    const task = taskOf(more(building(), [done(), stopped()]));
+    const merged: Event = { ...stamp, type: "main.merged", request: 9, commit: "m", files: [] };
+    expect(evolve(task, merged).ok).toBe(false);
   });
 });

@@ -121,7 +121,7 @@ export function holdText(hold: Hold): string {
     case "gave_up":
       return `its agent gave up: ${hold.reason}`;
     case "loop_cap":
-      return "review asked for changes too many times";
+      return `the loop cap was reached: ${hold.findings}`;
     case "failed":
       return failedWhat[hold.what];
     case "unsaved":
