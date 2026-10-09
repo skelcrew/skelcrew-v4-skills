@@ -787,3 +787,38 @@ above.
   split's workspace is removed whatever its planner's stop reports.
 
 **Stories this part reaches:** stories 3 and 9 in full, and story 8's kill.
+
+### Part 7: attach and detach
+
+You step into the agent's session and back out. While you are attached, the agent keeps
+working with you, so the task keeps its slot (part 10), and the scheduler types no kept
+answer into the session (part 8). Agent inputs are still heard as usual.
+
+**The table.**
+
+| Input | State | Result |
+|---|---|---|
+| attach | a running session, not attached | `session.attached` |
+| attach | already attached | refused |
+| attach | no running session | refused: there is nothing to attach to. This covers a held task, a task between agents and an ended task. |
+| detach, resume | attached | `session.detached` (resume). The agent carries on. |
+| detach, hand over | attached, in build, `ship` or `try` | `session.detached` (hand over), then as if the builder ran `done`: `session.stopping` (reported) and `build.done`, handed over by you, with the commit and files the daemon read from git. |
+| detach, hand over | attached, in build, `answer` | refused: an answer needs the builder's report |
+| detach, hand over | attached, in triage or review | refused: only a builder's work can be handed over |
+| detach | not attached | refused |
+
+**Decisions**
+
+- **Attaching needs a running session.** Once the session has ended, or while it starts or
+  stops, there is nothing to step into. `skel open` gives you the workspace instead.
+- **An agent being let go takes your attachment with it.** A stop for any reason, a crash
+  included, clears it. So a later detach is refused, which tells you the session had
+  already gone.
+- **Handing over takes your word for the summary.** The handed-over work is a summary that
+  says you handed it over. The open question, if any, goes with the agent, as with any
+  stop.
+- **A refused detach leaves you attached in the core's view.** The CLI can then send a
+  detach with resume.
+
+**Stories this part reaches:** none of the nine. A new one: you attach to a builder, then
+hand over, and the task merges main and goes to review.

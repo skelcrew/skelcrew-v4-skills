@@ -4,7 +4,13 @@ import { advance } from "./advance";
 import { outputOf, ready } from "./delivery";
 import type { Draft } from "./draft";
 import { stopAgent } from "./stop";
-import { type AgentInput, type BuildState, LOOP_CAP, type PluginInput } from "./types";
+import {
+  type AgentInput,
+  type BuildState,
+  type Handover,
+  LOOP_CAP,
+  type PluginInput,
+} from "./types";
 
 export function builderCall(
   draft: Draft,
@@ -22,22 +28,30 @@ export function builderCall(
         const article = state.intent === "answer" ? "an" : "a";
         return `${article} ${state.intent} task hands over a ${wants}, not a ${input.work.kind}`;
       }
-      stopAgent(draft, input.session, "reported", state.intent !== "answer");
-      draft.record({
-        type: "build.done",
-        handover: {
-          intent: state.intent,
-          commit: input.commit,
-          files: input.files,
-          by: "builder",
-          work: input.work,
-        },
+      handOver(draft, state, input.session, {
+        intent: state.intent,
+        commit: input.commit,
+        files: input.files,
+        by: "builder",
+        work: input.work,
       });
       return undefined;
     }
     default:
       return "not built yet";
   }
+}
+
+// The builder is let go and its work is fixed: the commit and every file
+// the branch changed. Merging main or review follows once it has stopped.
+export function handOver(
+  draft: Draft,
+  state: BuildState,
+  session: number,
+  handover: Handover,
+): void {
+  stopAgent(draft, session, "reported", state.intent !== "answer");
+  draft.record({ type: "build.done", handover });
 }
 
 type MergeReply = Extract<PluginInput, { kind: "main_merged" | "main_conflict" | "main_failed" }>;

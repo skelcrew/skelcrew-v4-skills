@@ -4,6 +4,7 @@
 // rules, under "How every input is judged".
 
 import { advance } from "./advance";
+import { attach, detach } from "./attach";
 import { builderCall, merged } from "./build";
 import { approve, delivered, deny } from "./delivery";
 import { accept, Draft, refuse, stamp } from "./draft";
@@ -114,6 +115,10 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
     case "approve_proposals":
     case "deny_proposals":
       return `task ${draft.task.id} has no proposals until it ends`;
+    case "attach":
+      return attach(draft, state);
+    case "detach":
+      return detach(draft, state, input);
     case "pause":
       return pause(draft, state);
     case "resume":

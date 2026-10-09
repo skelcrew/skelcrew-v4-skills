@@ -438,6 +438,8 @@ test("random runs reach every event built so far", () => {
     "task.resumed",
     "task.killed",
     "task.failed",
+    "session.attached",
+    "session.detached",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 }, 120_000);

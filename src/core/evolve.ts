@@ -431,6 +431,15 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
         },
       });
 
+    case "session.attached":
+      if (step.kind !== "running" || state.attached)
+        return misfit(event, "there is nothing to attach to");
+      return ok({ ...task, state: { ...state, attached: true } });
+
+    case "session.detached":
+      if (!state.attached) return misfit(event, "you aren't attached");
+      return ok({ ...task, state: { ...state, attached: false } });
+
     case "task.paused":
       if (state.hold !== undefined) return misfit(event, "the task is already held");
       return ok({ ...task, state: { ...state, hold: { kind: "paused" } } });
