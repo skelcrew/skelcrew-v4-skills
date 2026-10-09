@@ -3,7 +3,16 @@
 // phase. `docs/core.md` has the rules, under "How every input is judged".
 
 import { evolve } from "./evolve";
-import { plainBrief, runningSession } from "./task";
+import {
+  heldWorkspaces,
+  holdsSession,
+  phaseRole,
+  plainBrief,
+  runningSession,
+  sessionRole,
+  stoppingSession,
+  waitsOn,
+} from "./task";
 import type {
   AgentInput,
   Command,
@@ -29,11 +38,59 @@ export function decide(task: Task | undefined, input: Input, _config: Config): D
       `the issue was ${input.change} in the tracker, but tasks move only through Skelcrew`,
     );
   }
+  if (input.sender === "plugin") {
+    const late = lateReply(task, input);
+    if (late !== undefined) return late;
+  }
+  if (task.state.phase === "ended") return refuse(`task ${task.id} has ended`);
   if (input.sender === "agent") {
     const stranger = notTheAgent(task, input);
     if (stranger !== undefined) return refuse(stranger);
   }
   return refuse("not built yet");
+}
+
+// A reply the task no longer waits on is late. It is accepted with only
+// the commands that clean up after it. A repeat of what the task already
+// holds is accepted and does nothing. Returns undefined for a reply the
+// task does wait on, and for every input that isn't a reply.
+function lateReply(task: Task, input: PluginInput): Decision | undefined {
+  switch (input.kind) {
+    case "workspace_created":
+    case "workspace_failed": {
+      if (waitsOn(task, "creating_workspace", input.request)) return undefined;
+      const cleanup: Command[] =
+        input.kind === "workspace_created" && !heldWorkspaces(task).includes(input.request)
+          ? [{ kind: "remove_workspace", task: task.id, path: input.path }]
+          : [];
+      return accept(cleanup);
+    }
+    case "session_started":
+    case "session_failed": {
+      if (waitsOn(task, "starting", input.request)) return undefined;
+      const cleanup: Command[] =
+        input.kind === "session_started" && !holdsSession(task, input.request)
+          ? [{ kind: "stop_session", task: task.id, session: input.request, save: false }]
+          : [];
+      return accept(cleanup);
+    }
+    case "session_ended":
+      if (holdsSession(task, input.session) || waitsOn(task, "starting", input.session)) {
+        return undefined;
+      }
+      return accept([]);
+    case "session_stopped":
+      return stoppingSession(task) === input.session ? undefined : accept([]);
+    case "main_merged":
+    case "main_conflict":
+    case "main_failed":
+      return waitsOn(task, "merging", input.request) ? undefined : accept([]);
+    case "output_delivered":
+    case "output_failed":
+      return waitsOn(task, "delivering", input.request) ? undefined : accept([]);
+    default:
+      return undefined;
+  }
 }
 
 function isArrival(input: Input): input is Arrival {
@@ -74,6 +131,9 @@ function notTheAgent(task: Task, input: AgentInput): string | undefined {
   if (runningSession(task) !== input.session) {
     return `session ${input.session} isn't the task's agent`;
   }
+  const role = sessionRole(task, input.session);
+  if (role !== input.role) return `session ${input.session} is the ${role}, not the ${input.role}`;
+  if (phaseRole(task) !== role) return `a ${role} doesn't work in ${task.state.phase}`;
   return undefined;
 }
 
@@ -83,6 +143,10 @@ function settingsOf(input: Extract<YouInput, { kind: "add" }>) {
     ...(input.rigor === undefined ? {} : { rigor: input.rigor }),
     ...(input.approve === undefined ? {} : { approve: input.approve }),
   };
+}
+
+function accept(commands: Command[]): Decision {
+  return { ok: true, events: [], commands };
 }
 
 function refuse(reason: string): Decision {

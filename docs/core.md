@@ -311,9 +311,11 @@ The types live in `src/core/types.ts`. This part says what they hold and why.
   spec and the loop count. Review also holds the handed-over work and the reviewed commit.
 - **`try` ends in build.** Its approval and delivery steps carry the handed-over work and the
   reviewed commit, since build has no other place for them.
-- **An ended task can still owe one cleanup.** When a task ends while its agent is stopping,
-  it keeps that session and the workspace the agent ran in. Once the stop is confirmed and
-  saved, the workspace is removed. If the save failed, the workspace is kept for good.
+- **An ended task can still owe one cleanup.** When a task ends while its agent is starting
+  or stopping, it keeps that agent and the workspace the agent runs in. A start is stopped
+  once it answers. Once the stop is confirmed and saved, the workspace is removed. If the
+  save failed, the workspace is kept for good. Without this, killing a task while its
+  session starts would remove the workspace under the session coming up.
 
 **Holds**
 
@@ -416,8 +418,9 @@ types are plain TypeScript for now.
    example, a second "started" for the session that is running doesn't stop it.
 5. An ended task accepts only the stop it still waits on, late replies, usage, and your
    decisions on its proposals. Everything else is refused, since nothing leaves an ending.
-6. An agent's input is heard only from the session the task's step holds as running, and
-   only for the role that fits the phase. Everything else is refused.
+6. An agent's input is heard only from the session the task's step holds as running. The
+   role it claims must be the role that session was started for, and that role must work
+   the phase. Everything else is refused.
 7. Then the input is judged against the phase and step.
 
 **Stories**

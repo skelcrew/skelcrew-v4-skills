@@ -99,3 +99,33 @@ export function refused(decision: Decision): string {
 export function types(events: Event[]): string[] {
   return events.map((event) => event.type);
 }
+
+// A task built by hand in the given state, for judging one input against
+// a state the transitions above it don't reach yet.
+export function aTask(state: Task["state"], extra: Partial<Task> = {}): Task {
+  return {
+    id: "t1",
+    source: { kind: "local", id: "t1" },
+    title: "Fix export",
+    description: "",
+    receivedAt: 1,
+    requests: 2,
+    sessions: [],
+    state,
+    ...extra,
+  };
+}
+
+export const noUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, minutes: 0 };
+
+export const workspace = {
+  request: 1,
+  path: "/w/t1",
+  branch: "skel/t1-fix-export",
+  unsaved: false,
+};
+
+// Judges one input against a hand-built task.
+export function judge(task: Task, input: Input, cfg: Config = config): Decision {
+  return decide(task, input, cfg);
+}

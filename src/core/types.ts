@@ -197,14 +197,20 @@ export type Outcome =
 
 export type ProposalState = Proposal & { decision: "pending" | "approved" | "denied" };
 
-// An ended task. `stopping` is an agent whose stop it still waits on.
-// `workspace` and `copy` are what that agent ran in, removed once the stop
-// is saved. A workspace whose save failed stays for good.
+// An agent an ended task still waits on: a start still in flight, which
+// is stopped once it answers, or a stop not yet confirmed.
+export type Leftover =
+  | { kind: "starting"; request: number }
+  | { kind: "stopping"; session: number };
+
+// An ended task. `agent` is the agent it still waits on. `workspace` and
+// `copy` are what that agent runs in, removed once its stop is saved. A
+// workspace whose save failed stays for good.
 export type EndedState = {
   phase: "ended";
   outcome: Outcome;
   proposals: ProposalState[];
-  stopping?: number;
+  agent?: Leftover;
   workspace?: Workspace;
   copy?: Copy;
 };
