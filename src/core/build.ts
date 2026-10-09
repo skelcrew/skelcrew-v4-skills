@@ -69,6 +69,11 @@ export function merged(draft: Draft, input: MergeReply): void {
       if (before.phase !== "build" || before.step.kind !== "merging") return;
       const reviewed = { commit: input.commit, files: input.files };
       const handover = before.step.handover;
+      if (handover.intent !== before.intent) {
+        // Your change of intent sets this work aside. A fresh builder starts.
+        advance(draft);
+        return;
+      }
       if (before.intent === "ship") {
         draft.record({ type: "phase.started", phase: "review", handover, reviewed });
         advance(draft);

@@ -3,9 +3,10 @@
 // ended task, then the sender, then the phase. `docs/core.md` has the
 // rules, under "How every input is judged".
 
-import { advance } from "./advance";
+import { advance, isStale, settled, triageSkipped } from "./advance";
 import { attach, detach } from "./attach";
 import { builderCall, merged } from "./build";
+import { change } from "./change";
 import { approve, delivered, deny } from "./delivery";
 import { accept, Draft, refuse, stamp } from "./draft";
 import { evolve } from "./evolve";
@@ -116,6 +117,8 @@ function fromYou(draft: Draft, state: ActiveState, input: YouInput): string | un
     case "approve_proposals":
     case "deny_proposals":
       return `task ${draft.task.id} has no proposals until it ends`;
+    case "set":
+      return change(draft, input);
     case "reply":
       return answer(draft, state, { text: input.text, by: { kind: "you" } });
     case "attach":
@@ -171,7 +174,7 @@ function reply(draft: Draft, state: ActiveState, input: PluginInput): string | u
   switch (input.kind) {
     case "workspace_created":
       draft.record({ type: "workspace.created", request: input.request, path: input.path });
-      advance(draft);
+      settled(draft);
       return undefined;
     case "workspace_failed":
       draft.record({ type: "workspace.failed", request: input.request, error: input.error });
@@ -182,10 +185,9 @@ function reply(draft: Draft, state: ActiveState, input: PluginInput): string | u
       return undefined;
     case "session_started":
       draft.record({ type: "session.started", session: input.request, harnessId: input.harnessId });
-      // A held task has no agent at work, so a session that starts now stops.
-      if (draft.task.state.phase !== "ended" && draft.task.state.hold !== undefined) {
-        letGo(draft, input.request, "stopped");
-      }
+      // A held task has no agent at work, and a session made for another
+      // intent, or for a triage you have ended, is replaced. So it stops.
+      if (startsUnwanted(draft.task.state)) letGo(draft, input.request, "stopped");
       return undefined;
     case "session_failed":
       draft.record({ type: "session.failed", request: input.request, error: input.error });
@@ -222,6 +224,11 @@ function reply(draft: Draft, state: ActiveState, input: PluginInput): string | u
     default:
       return "not built yet";
   }
+}
+
+function startsUnwanted(state: Task["state"]): boolean {
+  if (state.phase === "ended") return false;
+  return state.hold !== undefined || isStale(state) || triageSkipped(state);
 }
 
 function isArrival(input: Input): input is Arrival {

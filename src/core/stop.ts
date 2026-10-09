@@ -1,6 +1,6 @@
 // Stopping an agent, and what follows once the stop is confirmed.
 
-import { advance } from "./advance";
+import { settled } from "./advance";
 import type { Draft } from "./draft";
 import { afterTester } from "./review";
 import type { EndReason, PluginInput, Spec } from "./types";
@@ -64,7 +64,7 @@ export function stopped(draft: Draft, input: Stopped): void {
     afterTester(draft, before.step.verdict);
     return;
   }
-  advance(draft);
+  settled(draft);
 }
 
 // An ended task's last agent has stopped. What it ran in is removed now,

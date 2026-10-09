@@ -4,8 +4,10 @@
 import type { Draft } from "./draft";
 import { branchName, plainBrief } from "./task";
 import type {
+  ActiveState,
   BuildState,
   Copy,
+  Handback,
   Handover,
   ReviewState,
   Role,
@@ -27,7 +29,11 @@ export function advance(draft: Draft): void {
     case "build":
       if (state.workspace === undefined) {
         requestWorkspace(draft, { kind: "task", branch: branchName(draft.task) });
-      } else if (state.step.kind === "queued" && state.step.handover !== undefined) {
+      } else if (
+        state.step.kind === "queued" &&
+        state.step.handover !== undefined &&
+        !isStale(state)
+      ) {
         handOn(draft, state.step.handover, state.workspace);
       } else {
         requestBuilder(draft, state, state.workspace);
@@ -121,4 +127,95 @@ function handOn(draft: Draft, handover: Handover, workspace: Workspace): void {
   const request = draft.nextRequest();
   draft.record({ type: "main.requested", request });
   draft.send({ kind: "merge_main", task: draft.task.id, request, path: workspace.path });
+}
+
+// Whether the task's agent or work was made for another intent than the
+// task's. Stale work is never merged, reviewed or delivered.
+export function isStale(state: ActiveState): boolean {
+  const step = state.step;
+  switch (state.phase) {
+    case "triage":
+      return false;
+    case "review":
+      return state.intent !== state.handover.intent;
+    case "build":
+      if ((step.kind === "starting" || step.kind === "running") && "intent" in step) {
+        return step.intent !== state.intent;
+      }
+      if ("handover" in step && step.handover !== undefined) {
+        return step.handover.intent !== state.intent;
+      }
+      if ("output" in step) return state.intent !== "try";
+      return false;
+  }
+}
+
+// Whether your overrides end triage: intent and rigor are both set.
+export function triageSkipped(state: ActiveState): boolean {
+  return (
+    state.phase === "triage" &&
+    state.overrides.intent !== undefined &&
+    state.overrides.rigor !== undefined
+  );
+}
+
+// Build starts from your overrides, with the title and description as
+// brief, as when triage is skipped at add.
+export function buildFromOverrides(draft: Draft): void {
+  const state = draft.task.state;
+  if (state.phase !== "triage" || !triageSkipped(state)) return;
+  const { intent, rigor, approve } = state.overrides;
+  if (intent === undefined || rigor === undefined) return;
+  draft.record({
+    type: "phase.started",
+    phase: "build",
+    intent,
+    rigor,
+    approve: approve ?? false,
+    brief: plainBrief(draft.task),
+    loops: 0,
+    ...(state.workspace === undefined ? {} : { workspace: state.workspace }),
+  });
+}
+
+// The task goes back to build, keeping its plan, loops and workspace.
+export function backToBuild(
+  draft: Draft,
+  state: BuildState | ReviewState,
+  handback?: Handback,
+  loops = state.loops,
+): void {
+  draft.record({
+    type: "phase.started",
+    phase: "build",
+    intent: state.intent,
+    rigor: state.rigor,
+    approve: state.approve,
+    brief: state.brief,
+    ...(state.spec === undefined ? {} : { spec: state.spec }),
+    loops,
+    ...(state.workspace === undefined ? {} : { workspace: state.workspace }),
+    ...(handback === undefined ? {} : { handback }),
+  });
+}
+
+// A step in flight has settled, and the task still holds its slot. A
+// change you made meanwhile applies now, then the task moves on.
+export function settled(draft: Draft): void {
+  const state = draft.task.state;
+  if (state.phase !== "ended" && state.step.kind === "queued") {
+    if (triageSkipped(state)) {
+      buildFromOverrides(draft);
+    } else if (state.phase === "review" && isStale(state)) {
+      if (state.step.copy !== undefined) dropCopy(draft, state.step.copy);
+      const now = draft.task.state;
+      if (now.phase === "review") backToBuild(draft, now);
+    }
+  }
+  advance(draft);
+}
+
+function dropCopy(draft: Draft, copy: Copy): void {
+  draft.record({ type: "workspace.removed", request: copy.request });
+  draft.send({ kind: "remove_workspace", task: draft.task.id, path: copy.path });
 }

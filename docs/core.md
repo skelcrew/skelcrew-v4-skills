@@ -861,3 +861,69 @@ The question also goes whenever its agent is let go, by any stop. That is rule 2
 - **The account check uses config, case for case.** "Me" and "me" are different accounts.
 
 **Stories this part reaches:** story 4.
+
+### Part 9: changing intent, rigor or approval
+
+`skel set` is never refused for timing. `task.set` records the change at once. Its effect
+comes at once when nothing is in flight. Otherwise it comes when the step in flight settles.
+A set that names no field is refused. A set on an ended task is refused, as always.
+
+**Stale work.** A builder's session and its handed-over work are made for one intent. Once
+the intent changes, they are stale. In review, the handed-over work is stale once the task's
+intent differs from the intent it was built for. A stale builder is stopped and replaced. Stale
+work is never merged, reviewed or delivered. The task goes back to build, keeping its loop
+count and its commits, and a fresh builder starts with the new permissions.
+
+**During triage**, a change is kept as an override. Once both intent and rigor are set,
+triage ends:
+
+| Step | Result |
+|---|---|
+| queued | `phase.started` for build at once, with the title and description as brief. It waits for the scheduler. |
+| creating workspace | once created, build starts and the builder is requested |
+| starting | once started, the planner is stopped, then build starts |
+| running | the planner is stopped (stopped), then build starts |
+| stopping | once stopped, build starts. If the planner proceeded, your overrides win field by field. |
+
+**During build and review, a change of intent:**
+
+| Step | Result |
+|---|---|
+| queued | nothing more. The next start asks for a fresh builder. Stale handed-over work is dropped then. In review, any copy is removed and the task goes back to build. |
+| creating workspace | build: nothing more. Review: once the copy is created, it is removed, and the task goes back to build. |
+| starting | once started, the stale session is stopped and replaced |
+| running | the stale session is stopped (stopped), then replaced. A tester's copy goes as usual. |
+| stopping | once stopped, stale work goes back to build, whatever the agent reported |
+| merging | once merged, stale work goes back to build instead of to review or delivery |
+| awaiting approval, ready | `phase.started` for build at once. It waits for the scheduler. |
+| delivering | once delivered, the task is done. Too late to change. If the delivery failed, the task goes back to build, still held as a failed delivery. |
+
+**A change of rigor** changes only the field. A build or review under way carries on, and the
+next review uses the new rigor.
+
+**A change of approval:**
+
+| Step | Result |
+|---|---|
+| ready, setting it | `approval.requested`: the task waits for your sign-off |
+| awaiting approval, clearing it, with no critical file changed | `output.ready`, then delivery unless held |
+| awaiting approval, clearing it, with a critical file changed | nothing more: the critical path still needs you |
+| delivering | too late: the delivery carries on |
+| any other step | the flag applies when the output is ready |
+
+**Decisions**
+
+- **"Waits until the step settles" means the reply handlers apply the change.** No change is
+  stored apart from the field itself. Each reply compares the task's intent with the intent
+  its session or work was made for.
+- **A delivery in flight can't be called back.** The spec says set is never refused for
+  timing, but a confirmed delivery ends the task. So a change during delivery takes effect
+  only if the delivery fails.
+- **A set to the same intent changes nothing.** Only a different intent makes work stale.
+- **Going back to build from review drops the findings.** They were about work for the old
+  intent.
+- **During triage, approval alone is kept as an override**, and applies when build starts.
+
+**Stories this part reaches:** none of the nine. A new one: you change a `ship` task to
+`answer` while the builder runs. The builder stops, saving, and a fresh read-only builder
+starts on the same branch.

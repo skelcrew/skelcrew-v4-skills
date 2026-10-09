@@ -128,7 +128,9 @@ function ended(task: Task, state: EndedState, event: Event): Evolved {
 function end(task: Task, state: ActiveState, outcome: Outcome, proposals: Proposal[]): Evolved {
   const step = state.step;
   const role = phaseRole(task);
-  const save = state.phase === "build" && state.intent !== "answer";
+  // A builder saves if its session was started with edits.
+  const intent = "intent" in step ? step.intent : state.phase === "build" ? state.intent : "answer";
+  const save = state.phase === "build" && intent !== "answer";
   const agent: Leftover | undefined =
     step.kind === "starting" && role !== undefined
       ? { kind: "starting", request: step.request, role, save }
@@ -178,7 +180,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
           },
         });
       }
-      if (step.kind !== "queued" && step.kind !== "awaiting_approval") {
+      if (step.kind !== "queued" && step.kind !== "awaiting_approval" && step.kind !== "ready") {
         return misfit(event, `build can't start while the step is ${step.kind}`);
       }
       return ok({
@@ -312,7 +314,7 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
 
     case "output.ready": {
       if (state.phase === "triage") return misfit(event, "triage has no output");
-      if (step.kind !== "queued" && step.kind !== "awaiting_approval") {
+      if (step.kind !== "queued" && step.kind !== "awaiting_approval" && step.kind !== "ready") {
         return misfit(event, `the step is ${step.kind}`);
       }
       const ready: LastStep = { kind: "ready", output: event.output, critical: event.critical };
@@ -438,6 +440,9 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
 
     case "session.detached":
       if (!state.attached) return misfit(event, "you aren't attached");
+      if (event.choice === "hand_over" && (state.phase !== "build" || state.intent === "answer")) {
+        return misfit(event, "only a ship or try builder's work can be handed over");
+      }
       return ok({ ...task, state: { ...state, attached: false } });
 
     case "question.asked":
@@ -463,6 +468,27 @@ function active(task: Task, state: ActiveState, event: Event): Evolved {
       const { question, ...rest } = state;
       if (question?.answer === undefined) return misfit(event, "there is no answer to deliver");
       return ok({ ...task, state: rest });
+    }
+
+    case "task.set": {
+      if (state.phase === "triage") {
+        const overrides = {
+          ...state.overrides,
+          ...(event.intent === undefined ? {} : { intent: event.intent }),
+          ...(event.rigor === undefined ? {} : { rigor: event.rigor }),
+          ...(event.approve === undefined ? {} : { approve: event.approve }),
+        };
+        return ok({ ...task, state: { ...state, overrides } });
+      }
+      const fields = {
+        ...(event.intent === undefined ? {} : { intent: event.intent }),
+        ...(event.rigor === undefined ? {} : { rigor: event.rigor }),
+        ...(event.approve === undefined ? {} : { approve: event.approve }),
+      };
+      return ok({
+        ...task,
+        state: state.phase === "build" ? { ...state, ...fields } : { ...state, ...fields },
+      });
     }
 
     case "task.paused":

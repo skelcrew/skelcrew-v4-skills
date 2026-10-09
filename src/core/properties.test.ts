@@ -34,6 +34,8 @@ const yours: EventType[] = [
   "task.killed",
   "task.failed",
   "question.answered",
+  "session.attached",
+  "session.detached",
 ];
 
 // What an ended task may still record.
@@ -167,6 +169,10 @@ function broken(world: World, step: Step): string | undefined {
       const sent = commands.filter((c) => requests.includes(c.kind));
       if (sent.length > 0) return `rule 11: a held task sent ${sent[0]?.kind}`;
     }
+    // You are attached only to a running session.
+    if (state.attached && state.step.kind !== "running") {
+      return "you are attached, but no session is running";
+    }
     // 20. No question outlives its agent.
     if (state.question !== undefined && state.question.session !== runningSession(after)) {
       return "rule 20: a question outlived its agent";
@@ -230,11 +236,16 @@ function broken(world: World, step: Step): string | undefined {
     }
   }
 
-  // 15. Work is saved before it is let go.
+  // 15. Work is saved before it is let go. A builder that could edit is
+  // stopped with a save. Cleanup stops for late sessions record no events,
+  // and the late session never worked for the task.
   for (const command of commands) {
     if (command.kind === "stop_session") {
       const start = world.startOf(command.task, command.session);
       if (start?.role === "tester" && command.save) return "rule 15: a tester's stop saved";
+      if (start?.edits === true && !command.save && events.length > 0) {
+        return `rule 15: builder ${command.session} could edit, but its stop didn't save`;
+      }
     }
     if (command.kind !== "remove_workspace") continue;
     if (world.unsaved.has(command.path)) return `rule 15: unsaved ${command.path} was removed`;
@@ -393,7 +404,7 @@ test("every rule holds after every step of random runs", () => {
       const problem = run(choices);
       if (problem !== undefined) throw new Error(problem);
     }),
-    { numRuns: 300, includeErrorInReport: true },
+    { numRuns: 300, includeErrorInReport: true, endOnFailure: true },
   );
 }, 120_000);
 
@@ -443,6 +454,7 @@ test("random runs reach every event built so far", () => {
     "question.asked",
     "question.answered",
     "answer.delivered",
+    "task.set",
   ];
   expect(reached.filter((type) => !seen.has(type))).toEqual([]);
 }, 120_000);

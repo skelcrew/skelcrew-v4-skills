@@ -1,6 +1,6 @@
 // The tester's verdict, and what follows once the tester has stopped.
 
-import { advance } from "./advance";
+import { advance, backToBuild, isStale } from "./advance";
 import { outputOf, ready } from "./delivery";
 import type { Draft } from "./draft";
 import { removeWorkspace, stopAgent } from "./stop";
@@ -40,6 +40,12 @@ export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
   if (state.phase !== "review" || state.step.kind !== "queued") return;
   const copy = state.step.copy;
   if (copy !== undefined) removeWorkspace(draft, copy.request, copy.path);
+  if (isStale(state)) {
+    // Your change of intent sets this review aside, whatever its verdict.
+    backToBuild(draft, state);
+    advance(draft);
+    return;
+  }
   if (verdict?.kind === "pass") {
     const output = outputOf(
       state.workspace.branch,
@@ -52,18 +58,7 @@ export function afterTester(draft: Draft, verdict: Verdict | undefined): void {
   }
   if (verdict?.kind === "changes") {
     const loops = state.loops + 1;
-    draft.record({
-      type: "phase.started",
-      phase: "build",
-      intent: state.intent,
-      rigor: state.rigor,
-      approve: state.approve,
-      brief: state.brief,
-      ...(state.spec === undefined ? {} : { spec: state.spec }),
-      loops,
-      workspace: state.workspace,
-      handback: { kind: "findings", text: verdict.findings },
-    });
+    backToBuild(draft, state, { kind: "findings", text: verdict.findings }, loops);
     if (loops >= LOOP_CAP) {
       draft.record({ type: "task.held", hold: { kind: "loop_cap", findings: verdict.findings } });
     }

@@ -1,5 +1,6 @@
 // Approval and delivery: the last steps of review, or of build for `try`.
 
+import { backToBuild, isStale } from "./advance";
 import type { Draft } from "./draft";
 import { removeWorkspace } from "./stop";
 import type { ActiveState, Handover, Output, PluginInput, Reviewed } from "./types";
@@ -72,18 +73,7 @@ export function deny(draft: Draft, state: ActiveState, note: string): string | u
   }
   if (note.trim() === "") return "a denial needs a note for the builder";
   draft.record({ type: "approval.denied", note });
-  draft.record({
-    type: "phase.started",
-    phase: "build",
-    intent: state.intent,
-    rigor: state.rigor,
-    approve: state.approve,
-    brief: state.brief,
-    ...(state.spec === undefined ? {} : { spec: state.spec }),
-    loops: state.loops,
-    ...(state.workspace === undefined ? {} : { workspace: state.workspace }),
-    handback: { kind: "denied", note },
-  });
+  backToBuild(draft, state, { kind: "denied", note });
   return undefined;
 }
 
@@ -96,6 +86,11 @@ export function delivered(draft: Draft, input: DeliveryReply): void {
       type: "task.held",
       hold: { kind: "failed", what: "delivery", error: input.error },
     });
+    // A change of intent made during the delivery applies now.
+    const state = draft.task.state;
+    if (state.phase !== "ended" && state.phase !== "triage" && isStale(state)) {
+      backToBuild(draft, state);
+    }
     return;
   }
   draft.record({ type: "output.delivered", request: input.request });

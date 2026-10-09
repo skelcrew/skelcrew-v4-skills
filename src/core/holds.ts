@@ -8,9 +8,14 @@ import { holdText, runningSession } from "./task";
 import type { ActiveState, EndReason, PluginInput, Task } from "./types";
 
 // Whether stopping the task's agent saves its work. Only a builder that can
-// edit has anything to save.
+// edit has anything to save, and that follows the intent its session was
+// started for, which a change of intent doesn't alter.
 export function saves(task: Task): boolean {
-  return task.state.phase === "build" && task.state.intent !== "answer";
+  const state = task.state;
+  if (state.phase !== "build") return false;
+  const step = state.step;
+  const intent = "intent" in step ? step.intent : state.intent;
+  return intent !== "answer";
 }
 
 export function letGo(draft: Draft, session: number, reason: EndReason): void {
